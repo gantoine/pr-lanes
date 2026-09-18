@@ -8,9 +8,9 @@ Works on `github.com` pull requests and issues, in Chrome and Firefox.
 
 ## What it does
 
-- Adds a lane switcher to the pull request header itself — `Humans (n) | Bots (n) | All`, with a count of
-  what is hidden — so it costs no vertical space. It follows GitHub's sticky header when you scroll, and
-  falls back to a bar above the timeline on pages with no header to sit in.
+- Adds a lane switcher to the pull request header itself — `Humans (n) | Bots (n) | All` plus a gear for
+  settings — so it costs no vertical space. It follows GitHub's sticky header when you scroll, and falls
+  back to a bar above the timeline on pages with no header to sit in.
 - **Humans** shows people's comments and reviews. **Bots** shows everything posted by apps, CI, and review
   bots — including the timeline events they generate. **All** is GitHub's normal view.
 - A review thread that a bot started but a human replied to stays in the Humans lane — that is a human
@@ -39,7 +39,7 @@ worker.
 ## Settings
 
 Chrome: `chrome://extensions` → *Details* → *Extension options*. Firefox: `about:addons` → *Preferences*.
-Or click *Settings* in the lane bar.
+Or click the gear in the lane switcher.
 
 | Setting | Default | What it does |
 | --- | --- | --- |

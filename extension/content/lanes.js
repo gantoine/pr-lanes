@@ -48,13 +48,6 @@
     return lane === 'all' || settings.showActivity;
   }
 
-  function isHidden(actor, form, pinned) {
-    if (pinned || lane === 'all') return false;
-    if (lane === 'human' && actor === 'bot') return true;
-    if (lane === 'bot' && actor === 'human') return true;
-    return form === 'event' && !activityVisible();
-  }
-
   function collectTargets() {
     if (targets && targets.every((target) => target.root.isConnected)) return targets;
 
@@ -82,7 +75,7 @@
 
   function classifyRows(target) {
     const revision = String(rulesRevision);
-    const counts = { human: 0, bot: 0, hidden: 0 };
+    const counts = { human: 0, bot: 0 };
 
     for (const row of target.rowsOf(target.root)) {
       if (row.dataset.prlanesRev !== revision) {
@@ -96,7 +89,6 @@
 
       const actor = row.dataset.prlanesActor;
       if (counts[actor] !== undefined) counts[actor] += 1;
-      if (isHidden(actor, row.dataset.prlanesForm, row.dataset.prlanesPin === '1')) counts.hidden += 1;
     }
 
     setData(target.root, 'prlanesLane', lane);
@@ -117,8 +109,7 @@
       '<button type="button" class="prlanes-tab" data-lane="bot"><span class="prlanes-dot prlanes-dot--bot"></span>Bots<span class="prlanes-count" data-count="bot">0</span></button>',
       '<button type="button" class="prlanes-tab" data-lane="all">All</button>',
       '</div>',
-      '<span class="prlanes-note" data-note></span>',
-      '<a class="prlanes-settings" target="_blank" rel="noreferrer">Settings</a>'
+      '<a class="prlanes-settings" target="_blank" rel="noreferrer" title="PR Lanes settings" aria-label="PR Lanes settings"><svg class="prlanes-gear" viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M8 0a8.2 8.2 0 0 1 .701.031C9.444.095 9.99.645 10.16 1.29l.288 1.107c.018.066.079.158.212.224.231.114.454.243.668.386.123.082.233.09.299.071l1.103-.303c.644-.176 1.392.021 1.82.63.27.385.506.792.704 1.218.315.675.111 1.422-.364 1.891l-.814.806c-.049.048-.098.147-.088.294.016.257.016.515 0 .772-.01.147.039.246.088.294l.814.806c.475.469.679 1.216.364 1.891a7.977 7.977 0 0 1-.704 1.217c-.428.61-1.176.807-1.82.63l-1.103-.302c-.066-.019-.176-.011-.299.071a4.909 4.909 0 0 1-.668.386c-.133.066-.194.158-.212.224l-.288 1.107c-.17.645-.716 1.195-1.459 1.259a8.147 8.147 0 0 1-1.402 0c-.743-.064-1.289-.614-1.459-1.259l-.288-1.107c-.018-.066-.079-.158-.212-.224a4.958 4.958 0 0 1-.668-.386c-.123-.082-.233-.09-.299-.071l-1.103.303c-.644.176-1.392-.021-1.82-.63a8.12 8.12 0 0 1-.704-1.218c-.315-.675-.111-1.422.364-1.891l.814-.806c.049-.048.098-.147.088-.294a6.214 6.214 0 0 1 0-.772c.01-.147-.039-.246-.088-.294l-.814-.806C.635 6.045.431 5.298.746 4.623a7.92 7.92 0 0 1 .704-1.217c.428-.61 1.176-.807 1.82-.63l1.103.302c.066.019.176.011.299-.071.214-.143.437-.272.668-.386.133-.066.194-.158.212-.224L5.84 1.29c.17-.645.716-1.195 1.459-1.259A8.094 8.094 0 0 1 8 0Zm-.571 1.525c-.036.003-.108.036-.137.146l-.289 1.105c-.147.561-.549.967-.998 1.189-.173.086-.34.183-.5.29-.417.278-.97.423-1.529.27l-1.103-.303c-.109-.03-.175.016-.195.045-.22.312-.412.644-.573.99-.014.031-.021.11.059.19l.815.806c.411.406.562.957.53 1.456a4.709 4.709 0 0 0 0 .582c.032.499-.119 1.05-.53 1.456l-.815.806c-.08.08-.073.159-.059.19.161.346.353.677.573.989.02.03.086.076.195.046l1.102-.303c.56-.153 1.113-.008 1.53.27.161.107.328.204.501.29.449.222.851.628.998 1.189l.289 1.105c.029.11.101.143.137.146a6.6 6.6 0 0 0 1.142 0c.036-.003.108-.036.137-.146l.289-1.105c.147-.561.549-.967.998-1.189.173-.086.34-.183.5-.29.417-.278.97-.423 1.529-.27l1.103.303c.109.03.175-.016.195-.045.22-.313.411-.644.573-.99.014-.031.021-.11-.059-.19l-.815-.806c-.411-.406-.562-.957-.53-1.456a4.709 4.709 0 0 0 0-.582c-.032-.499.119-1.05.53-1.456l.815-.806c.08-.08.073-.159.059-.19a6.464 6.464 0 0 0-.573-.989c-.02-.03-.086-.076-.195-.046l-1.102.303c-.56.153-1.113.008-1.53-.27a4.44 4.44 0 0 0-.501-.29c-.449-.222-.851-.628-.998-1.189l-.289-1.105c-.029-.11-.101-.143-.137-.146a6.6 6.6 0 0 0-1.142 0ZM11 8a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM9.5 8a1.5 1.5 0 1 0-3.001.001A1.5 1.5 0 0 0 9.5 8Z"></path></svg></a>'
     ].join('');
 
     element.addEventListener('click', (event) => {
@@ -138,8 +129,7 @@
     barParts = {
       tabs: Array.from(element.querySelectorAll('.prlanes-tab')),
       human: element.querySelector('[data-count="human"]'),
-      bot: element.querySelector('[data-count="bot"]'),
-      note: element.querySelector('[data-note]')
+      bot: element.querySelector('[data-count="bot"]')
     };
 
     return element;
@@ -201,7 +191,6 @@
 
     setText(barParts.human, String(counts.human));
     setText(barParts.bot, String(counts.bot));
-    setText(barParts.note, counts.hidden ? `${counts.hidden} item${counts.hidden === 1 ? '' : 's'} hidden` : '');
   }
 
   function scan() {
@@ -213,12 +202,11 @@
     const found = collectTargets();
     if (!found.length) return;
 
-    const totals = { human: 0, bot: 0, hidden: 0 };
+    const totals = { human: 0, bot: 0 };
     for (const target of found) {
       const counts = classifyRows(target);
       totals.human += counts.human;
       totals.bot += counts.bot;
-      totals.hidden += counts.hidden;
     }
 
     placeBar(found[0]);

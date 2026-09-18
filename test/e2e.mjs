@@ -109,7 +109,8 @@ const SNAPSHOT = `(() => {
     active: bar.querySelector('.prlanes-tab--active').dataset.lane,
     humanCount: bar.querySelector('[data-count="human"]').textContent,
     botCount: bar.querySelector('[data-count="bot"]').textContent,
-    note: bar.querySelector('[data-note]').textContent,
+    gearIcon: Boolean(bar.querySelector('.prlanes-settings .prlanes-gear')),
+    barText: bar.textContent.trim(),
     barBeforeTimeline: bar.nextElementSibling === document.querySelector('.js-discussion'),
     inHeader: bar.classList.contains('prlanes-bar--header') && /TitleArea/.test(bar.parentElement.className)
   };
@@ -176,7 +177,9 @@ if (process.argv.includes('--serve')) {
 
     assert.equal(humans.humanCount, '5');
     assert.equal(humans.botCount, '6');
-    assert.equal(humans.note, '6 items hidden');
+    assert.equal(humans.gearIcon, true, 'settings is a gear icon');
+    assert.doesNotMatch(humans.barText, /hidden/i, 'the bar carries no hidden-count text');
+    assert.equal(humans.barText, 'LanesHumans5Bots6All');
 
     await evaluate('document.querySelector(".prlanes-tab[data-lane=\\"bot\\"]").click()');
     const bots = await waitFor(async () => {
@@ -191,7 +194,6 @@ if (process.argv.includes('--serve')) {
     assert.equal(bots.rows['pr-body'].visible, true, 'pull request body stays pinned in Bots lane');
     assert.equal(bots.rows['composer'].visible, true, 'comment composer is never hidden');
     assert.equal(bots.rows['ai-review'].visible, true, 'AI-badged review visible in Bots lane');
-    assert.equal(bots.note, '4 items hidden');
 
     await evaluate("document.dispatchEvent(new KeyboardEvent('keydown', { key: '3', code: 'Digit3', altKey: true, bubbles: true }))");
     const all = await waitFor(async () => {
@@ -200,7 +202,6 @@ if (process.argv.includes('--serve')) {
     }, 5000, 'Alt+3 switch to All');
 
     assert.ok(Object.values(all.rows).every((row) => row.visible), 'every row visible in All');
-    assert.equal(all.note, '');
 
     await evaluate(`(() => {
       const timeline = document.querySelector('.js-discussion rails-partial');
