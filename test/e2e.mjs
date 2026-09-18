@@ -119,6 +119,7 @@ const SNAPSHOT = `(() => {
     barBeforeTimeline: bar.nextElementSibling === document.querySelector('.js-discussion'),
     slot: ['rail', 'tabs', 'header'].find((name) => bar.classList.contains('prlanes-bar--' + name)) || 'timeline',
     railLeft: bar.style.left,
+    railTop: bar.style.top,
     slotParent: String(bar.parentElement.className)
   };
 })()`;
@@ -174,6 +175,7 @@ if (process.argv.includes('--serve')) {
     assert.equal(humans.active, 'human', 'default lane is Humans');
     assert.equal(humans.slot, 'rail', 'lane switcher is a rail under the author avatar at rest');
     assert.equal(humans.railLeft, '-72px', 'the rail lines up with the avatar gutter');
+    assert.equal(humans.railTop, '48px', 'the rail sits 8px under a 40px avatar');
     assert.equal(humans.icons, 3, 'each lane carries an icon');
 
     assert.deepEqual(humans.rows['pr-body'], { actor: 'human', form: 'comment', pinned: true, visible: true });
