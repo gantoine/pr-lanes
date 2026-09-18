@@ -6,57 +6,24 @@
   if (!api || !lanes) return;
 
   const LANES = ['human', 'bot', 'all'];
-
-  const DEFAULTS = {
-    defaultLane: 'human',
-    rememberPerPr: false,
-    activityLane: 'both',
-    extraBots: '',
-    forceHumans: '',
-    heuristics: true,
-    pinPrBody: true,
-    showBar: true
-  };
-
-  let settings = Object.assign({}, DEFAULTS);
-  let rules = lanes.buildRules(settings);
-  let rulesRevision = 1;
-  let lane = DEFAULTS.defaultLane;
-  let bar = null;
-  let scanHandle = 0;
-  let lastUrl = location.href;
+  const DEFAULTS = lanes.DEFAULTS;
+  const REVISION_KEYS = lanes.CLASSIFICATION_KEYS.concat('pinPrBody');
 
   const sync = api.storage.sync || api.storage.local;
   const local = api.storage.local || api.storage.sync;
 
-  function read(area, defaults) {
-    try {
-      const result = area.get(defaults);
-      if (result && typeof result.then === 'function') return result.catch(() => defaults);
-    } catch (error) {
-      /* fall through to callback form */
-    }
-    return new Promise((resolve) => {
-      try {
-        area.get(defaults, (value) => resolve(value || defaults));
-      } catch (error) {
-        resolve(defaults);
-      }
-    });
-  }
+  let settings = Object.assign({}, DEFAULTS);
+  let rules;
+  let rulesRevision = 1;
+  let lane;
+  let bar = null;
+  let barParts = null;
+  let targets = null;
+  let scanHandle = 0;
+  let lastUrl = location.href;
 
-  function write(area, values) {
-    try {
-      const result = area.set(values);
-      if (result && typeof result.then === 'function') result.catch(() => {});
-    } catch (error) {
-      try {
-        area.set(values, () => {});
-      } catch (ignored) {
-        /* storage unavailable */
-      }
-    }
-  }
+  const read = (area, defaults) => Promise.resolve().then(() => area.get(defaults)).catch(() => defaults);
+  const write = (area, values) => Promise.resolve().then(() => area.set(values)).catch(() => {});
 
   function isThreadPage() {
     return /^\/[^/]+\/[^/]+\/(pull|issues)\/\d+/.test(location.pathname);
@@ -72,66 +39,64 @@
   }
 
   function activityVisible() {
-    if (lane === 'all') return true;
-    if (settings.activityLane === 'both') return true;
-    if (settings.activityLane === 'none') return false;
-    return settings.activityLane === lane;
+    return lane === 'all' || settings.showActivity;
+  }
+
+  function isHidden(actor, form, pinned) {
+    if (pinned || lane === 'all') return false;
+    if (lane === 'human' && actor === 'bot') return true;
+    if (lane === 'bot' && actor === 'human') return true;
+    return form === 'event' && !activityVisible();
   }
 
   function collectTargets() {
-    const targets = [];
+    if (targets && targets.every((target) => target.root.isConnected)) return targets;
 
+    const found = [];
     const timeline = lanes.findTimelineRoot(document);
-    if (timeline) {
-      targets.push({ root: timeline, rows: lanes.timelineRows(timeline), pinFirstComment: settings.pinPrBody });
-    }
-
+    if (timeline) found.push({ root: timeline, rowsOf: lanes.timelineRows });
     const files = lanes.findFilesRoot(document);
-    if (files) {
-      targets.push({ root: files, rows: lanes.threadRows(files), pinFirstComment: false });
-    }
+    if (files) found.push({ root: files, rowsOf: lanes.threadRows });
 
-    return targets;
-  }
-
-  function classifyRows(target) {
-    const counts = { human: 0, bot: 0, activity: 0 };
-    let pinnedFirstComment = false;
-
-    for (const row of target.rows) {
-      if (row.dataset.prlanesRev !== String(rulesRevision)) {
-        setData(row, 'prlanesKind', lanes.classifyRow(row, rules));
-        setData(row, 'prlanesRev', String(rulesRevision));
-        if (lanes.isPinned(row)) setData(row, 'prlanesPin', '1');
-        else delete row.dataset.prlanesPin;
-      }
-
-      const kind = row.dataset.prlanesKind;
-      if (counts[kind] !== undefined) counts[kind] += 1;
-
-      if (target.pinFirstComment && !pinnedFirstComment && (kind === 'human' || kind === 'bot')) {
-        setData(row, 'prlanesPin', '1');
-        pinnedFirstComment = true;
-      }
-    }
-
-    return counts;
+    targets = found.length ? found : null;
+    return found;
   }
 
   function setData(element, key, value) {
     if (element.dataset[key] !== value) element.dataset[key] = value;
   }
 
-  function applyLane(target) {
-    setData(target.root, 'prlanesLane', lane);
-    setData(target.root, 'prlanesActivity', activityVisible() ? 'show' : 'hide');
+  function setText(element, value) {
+    if (element.textContent !== value) element.textContent = value;
   }
 
-  function hiddenCount(counts) {
-    if (lane === 'all') return 0;
-    let hidden = lane === 'human' ? counts.bot : counts.human;
-    if (!activityVisible()) hidden += counts.activity;
-    return hidden;
+  function setAttr(element, name, value) {
+    if (element.getAttribute(name) !== value) element.setAttribute(name, value);
+  }
+
+  function classifyRows(target) {
+    const revision = String(rulesRevision);
+    const counts = { human: 0, bot: 0, hidden: 0 };
+
+    for (const row of target.rowsOf(target.root)) {
+      if (row.dataset.prlanesRev !== revision) {
+        const kind = lanes.classifyRow(row, rules);
+        setData(row, 'prlanesActor', kind.actor);
+        setData(row, 'prlanesForm', kind.form);
+        setData(row, 'prlanesRev', revision);
+        if (settings.pinPrBody && lanes.isPrBody(row)) setData(row, 'prlanesPin', '1');
+        else delete row.dataset.prlanesPin;
+      }
+
+      const actor = row.dataset.prlanesActor;
+      if (counts[actor] !== undefined) counts[actor] += 1;
+      if (isHidden(actor, row.dataset.prlanesForm, row.dataset.prlanesPin === '1')) counts.hidden += 1;
+    }
+
+    setData(target.root, 'prlanesLane', lane);
+    setData(target.root, 'prlanesActivity', activityVisible() ? 'show' : 'hide');
+
+    return counts;
   }
 
   function buildBar() {
@@ -164,6 +129,13 @@
       settingsLink.remove();
     }
 
+    barParts = {
+      tabs: Array.from(element.querySelectorAll('.prlanes-tab')),
+      human: element.querySelector('[data-count="human"]'),
+      bot: element.querySelector('[data-count="bot"]'),
+      note: element.querySelector('[data-note]')
+    };
+
     return element;
   }
 
@@ -172,70 +144,52 @@
       if (bar && bar.isConnected) bar.remove();
       return;
     }
-    const parent = target.root.parentElement;
-    if (!parent) return;
     if (!bar) bar = buildBar();
-    if (bar.parentElement !== parent || bar.nextElementSibling !== target.root) {
-      parent.insertBefore(bar, target.root);
+    if (bar.nextElementSibling !== target.root && target.root.parentElement) {
+      target.root.parentElement.insertBefore(bar, target.root);
     }
-  }
-
-  function setText(element, value) {
-    if (element && element.textContent !== value) element.textContent = value;
   }
 
   function updateBar(counts) {
     if (!bar || !bar.isConnected) return;
 
-    for (const button of bar.querySelectorAll('.prlanes-tab')) {
+    for (const button of barParts.tabs) {
       const active = button.dataset.lane === lane;
-      if (button.classList.contains('prlanes-tab--active') !== active) {
-        button.classList.toggle('prlanes-tab--active', active);
-      }
-      if (button.getAttribute('aria-pressed') !== String(active)) {
-        button.setAttribute('aria-pressed', String(active));
-      }
+      button.classList.toggle('prlanes-tab--active', active);
+      setAttr(button, 'aria-pressed', String(active));
     }
 
-    setText(bar.querySelector('[data-count="human"]'), String(counts.human));
-    setText(bar.querySelector('[data-count="bot"]'), String(counts.bot));
-
-    const hidden = hiddenCount(counts);
-    setText(bar.querySelector('[data-note]'), hidden ? `${hidden} item${hidden === 1 ? '' : 's'} hidden` : '');
+    setText(barParts.human, String(counts.human));
+    setText(barParts.bot, String(counts.bot));
+    setText(barParts.note, counts.hidden ? `${counts.hidden} item${counts.hidden === 1 ? '' : 's'} hidden` : '');
   }
 
   function scan() {
-    if (location.href !== lastUrl) {
-      lastUrl = location.href;
-      loadLane().then((value) => {
-        if (value === lane) return;
-        lane = value;
-        scan();
-      });
-    }
-
     if (!isThreadPage()) {
       if (bar && bar.isConnected) bar.remove();
       return;
     }
 
-    const targets = collectTargets();
-    if (!targets.length) return;
+    const found = collectTargets();
+    if (!found.length) return;
 
-    const totals = { human: 0, bot: 0, activity: 0 };
-    for (const target of targets) {
+    const totals = { human: 0, bot: 0, hidden: 0 };
+    for (const target of found) {
       const counts = classifyRows(target);
       totals.human += counts.human;
       totals.bot += counts.bot;
-      totals.activity += counts.activity;
-      applyLane(target);
+      totals.hidden += counts.hidden;
     }
 
-    placeBar(targets[0]);
+    placeBar(found[0]);
     updateBar(totals);
   }
 
   function queueScan() {
+    if (location.href !== lastUrl) {
+      navigate();
+      return;
+    }
     if (scanHandle) return;
     scanHandle = setTimeout(() => {
       scanHandle = 0;
@@ -243,12 +197,20 @@
     }, 100);
   }
 
+  function navigate() {
+    lastUrl = location.href;
+    targets = null;
+    loadLane().then((value) => {
+      lane = value;
+      scan();
+    });
+  }
+
   function setLane(next) {
     const value = normalizeLane(next);
     if (value === lane) return;
     lane = value;
-    if (settings.rememberPerPr) write(local, { [threadKey()]: lane });
-    else write(local, { lane });
+    write(local, settings.rememberPerPr ? { [threadKey()]: lane } : { lane });
     scan();
   }
 
@@ -272,13 +234,9 @@
   }
 
   async function loadLane() {
-    if (settings.rememberPerPr) {
-      const key = threadKey();
-      const stored = await read(local, { [key]: settings.defaultLane });
-      return normalizeLane(stored[key]);
-    }
-    const stored = await read(local, { lane: settings.defaultLane });
-    return normalizeLane(stored.lane);
+    const key = settings.rememberPerPr ? threadKey() : 'lane';
+    const stored = await read(local, { [key]: settings.defaultLane });
+    return normalizeLane(stored[key]);
   }
 
   async function start() {
@@ -289,36 +247,32 @@
     scan();
 
     const observer = new MutationObserver((mutations) => {
+      if (!isThreadPage()) return;
       if (bar && mutations.every((mutation) => bar.contains(mutation.target))) return;
       queueScan();
     });
     observer.observe(document.body, { childList: true, subtree: true });
 
     for (const event of ['turbo:load', 'turbo:render', 'pjax:end', 'popstate', 'pageshow']) {
-      window.addEventListener(event, () => {
-        lastUrl = location.href;
-        loadLane().then((value) => {
-          lane = value;
-          scan();
-        });
-      });
+      window.addEventListener(event, queueScan);
     }
 
     document.addEventListener('keydown', onKeydown, true);
 
     if (api.storage.onChanged) {
       api.storage.onChanged.addListener((changes, area) => {
-        if (area === 'local' && changes.lane && !settings.rememberPerPr) {
-          lane = normalizeLane(changes.lane.newValue);
-          scan();
+        if (area === 'local') {
+          if (!settings.rememberPerPr && changes.lane) {
+            lane = normalizeLane(changes.lane.newValue);
+            scan();
+          }
           return;
         }
-        if (area !== 'sync' && area !== 'local') return;
-        const relevant = Object.keys(DEFAULTS).some((key) => key in changes);
-        if (!relevant) return;
+        if (area !== 'sync' || !Object.keys(DEFAULTS).some((key) => key in changes)) return;
+
         read(sync, DEFAULTS).then((next) => {
           settings = Object.assign({}, DEFAULTS, next);
-          invalidateRules();
+          if (REVISION_KEYS.some((key) => key in changes)) invalidateRules();
           scan();
         });
       });

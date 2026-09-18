@@ -9,13 +9,24 @@
     "48": "icons/icon-48.png",
     "128": "icons/icon-128.png"
   },
-  "permissions": ["storage"],
-  "host_permissions": ["https://github.com/*"],
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://github.com/*"
+  ],
   "content_scripts": [
     {
-      "matches": ["https://github.com/*"],
-      "js": ["content/classify.js", "content/lanes.js"],
-      "css": ["content/lanes.css"],
+      "matches": [
+        "https://github.com/*"
+      ],
+      "js": [
+        "content/classify.js",
+        "content/lanes.js"
+      ],
+      "css": [
+        "content/lanes.css"
+      ],
       "run_at": "document_idle"
     }
   ],
@@ -25,8 +36,12 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["options/options.html", "options/options.css", "options/options.js"],
-      "matches": ["https://github.com/*"]
+      "resources": [
+        "options/options.html"
+      ],
+      "matches": [
+        "https://github.com/*"
+      ]
     }
   ]
 }

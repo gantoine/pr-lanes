@@ -3,44 +3,16 @@
 
   const api = globalThis.browser || globalThis.chrome;
   const sync = api.storage.sync || api.storage.local;
-
-  const DEFAULTS = {
-    defaultLane: 'human',
-    rememberPerPr: false,
-    activityLane: 'both',
-    extraBots: '',
-    forceHumans: '',
-    heuristics: true,
-    pinPrBody: true,
-    showBar: true
-  };
+  const DEFAULTS = globalThis.PRLanes.DEFAULTS;
 
   const fields = Object.keys(DEFAULTS).map((key) => ({ key, element: document.getElementById(key) }));
   const status = document.getElementById('status');
 
-  function read(defaults) {
-    try {
-      const result = sync.get(defaults);
-      if (result && typeof result.then === 'function') return result.catch(() => defaults);
-    } catch (error) {
-      /* fall through to callback form */
-    }
-    return new Promise((resolve) => sync.get(defaults, (value) => resolve(value || defaults)));
-  }
-
-  function write(values) {
-    try {
-      const result = sync.set(values);
-      if (result && typeof result.then === 'function') return result;
-    } catch (error) {
-      /* fall through to callback form */
-    }
-    return new Promise((resolve) => sync.set(values, resolve));
-  }
+  const read = () => Promise.resolve().then(() => sync.get(DEFAULTS)).catch(() => DEFAULTS);
+  const write = (values) => Promise.resolve().then(() => sync.set(values));
 
   function render(values) {
     for (const { key, element } of fields) {
-      if (!element) continue;
       if (element.type === 'checkbox') element.checked = Boolean(values[key]);
       else element.value = values[key];
     }
@@ -49,7 +21,6 @@
   function collect() {
     const values = {};
     for (const { key, element } of fields) {
-      if (!element) continue;
       values[key] = element.type === 'checkbox' ? element.checked : element.value;
     }
     return values;
@@ -73,8 +44,7 @@
     flash('Reset');
   });
 
-  const known = document.getElementById('defaults');
-  if (known && globalThis.PRLanes) known.textContent = globalThis.PRLanes.DEFAULT_BOT_LOGINS.join(', ');
+  document.getElementById('defaults').textContent = globalThis.PRLanes.DEFAULT_BOT_LOGINS.join(', ');
 
-  read(DEFAULTS).then((values) => render(Object.assign({}, DEFAULTS, values)));
+  read().then((values) => render(Object.assign({}, DEFAULTS, values)));
 })();

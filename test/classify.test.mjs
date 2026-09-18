@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 import path from 'node:path';
 
-const root = path.dirname(new URL(import.meta.url).pathname);
+const root = import.meta.dirname;
 const code = await readFile(path.join(root, '..', 'extension', 'content', 'classify.js'), 'utf8');
 const context = vm.createContext({});
 vm.runInContext(code, context);
@@ -42,6 +42,9 @@ test('plain accounts are humans', () => {
 test('heuristics catch token-driven bots and can be turned off', () => {
   assert.equal(kind({ login: 'release-bot' }), 'bot');
   assert.equal(kind({ login: 'posthog-ci-bot' }), 'bot');
+  assert.equal(kind({ login: 'posthog-buildbot' }), 'bot');
+  assert.equal(kind({ login: 'deploy-ci' }), 'bot');
+  assert.equal(kind({ login: 'some-app' }), 'bot');
   assert.equal(kind({ login: 'release-bot' }, { heuristics: false }), 'human');
 });
 
@@ -63,4 +66,26 @@ test('logins normalize across decoration', () => {
 
 test('an unknown author stays visible in the humans lane', () => {
   assert.equal(kind({ login: '' }), 'human');
+});
+
+test('the settings schema is exported for both the content script and the options page', () => {
+  assert.deepEqual(Object.keys(lanes.DEFAULTS).sort(), [
+    'defaultLane',
+    'extraBots',
+    'forceHumans',
+    'heuristics',
+    'pinPrBody',
+    'rememberPerPr',
+    'showActivity',
+    'showBar'
+  ]);
+  assert.ok(lanes.CLASSIFICATION_KEYS.every((key) => key in lanes.DEFAULTS));
+});
+
+test('apps dropped from the built-in list are still caught by their bot signals', () => {
+  for (const login of ['claude', 'cursor', 'percy', 'chromatic', 'stale']) {
+    assert.equal(kind({ login }), 'human', `${login} is not assumed to be a bot by name alone`);
+    assert.equal(kind({ login, suffixedBot: true }), 'bot');
+    assert.equal(kind({ login, appAvatar: true }), 'bot');
+  }
 });

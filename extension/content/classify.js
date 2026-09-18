@@ -1,24 +1,31 @@
 (function (root) {
   'use strict';
 
+  const DEFAULTS = {
+    defaultLane: 'human',
+    rememberPerPr: false,
+    showActivity: true,
+    extraBots: '',
+    forceHumans: '',
+    heuristics: true,
+    pinPrBody: true,
+    showBar: true
+  };
+
+  const CLASSIFICATION_KEYS = ['extraBots', 'forceHumans', 'heuristics'];
+
   const DEFAULT_BOT_LOGINS = [
     'allcontributors',
     'argos-ci',
     'bundlemon',
     'changeset-bot',
-    'chromatic',
-    'claude',
     'codecov',
     'codecov-commenter',
     'codspeed-hq',
     'coderabbitai',
-    'copilot',
     'copilot-pull-request-reviewer',
-    'cursor',
-    'danger',
     'deepsource-autofix',
     'dependabot',
-    'depot',
     'devin-ai-integration',
     'ellipsis-dev',
     'github-actions',
@@ -31,7 +38,6 @@
     'max-ai',
     'mergify',
     'netlify',
-    'percy',
     'posthog-bot',
     'pre-commit-ci',
     'renovate',
@@ -43,16 +49,14 @@
     'sonarcloud',
     'sonarqubecloud',
     'sourcery-ai',
-    'stale',
     'trunk-io',
     'vercel'
   ];
 
   const HEURISTIC_PATTERNS = [
-    /(^|[-_.])bots?$/i,
+    /(^|[-_.])((ci|cd|deploy|build)-?)?bots?$/i,
     /^bot[-_.]/i,
-    /(^|[-_.])(ci|cd|deploy|build)-?bot$/i,
-    /(^|[-_.])(app|action|actions)$/i
+    /(^|[-_.])(app|action|actions|ci|cd)$/i
   ];
 
   const COMMENT_SELECTOR = [
@@ -65,8 +69,9 @@
     '[data-testid="pr-review-comment"]'
   ].join(',');
 
+  const COMMENT_BODY_SELECTOR = '.comment-body, .js-comment-body, [data-testid="markdown-body"]';
+
   const AUTHOR_SELECTOR = [
-    'a.author',
     '.author',
     '[data-testid="avatar-link"]',
     '[data-testid="issue-body-header-author"]',
@@ -74,13 +79,9 @@
     '[data-testid="author-link"]'
   ].join(',');
 
-  const AVATAR_SELECTOR = [
-    'img.avatar',
-    'img.avatar-user',
-    'img[data-component="Avatar"]',
-    'img[class*="avatar" i]',
-    'img[src*="avatars."]'
-  ].join(',');
+  const AVATAR_SELECTOR = 'img[class*="avatar" i], img[data-component="Avatar"], img[src*="avatars."]';
+
+  const BADGE_SELECTOR = '.Label, span[class*="Label"], [data-testid="bot-badge"]';
 
   const HEADER_SELECTOR = [
     '.timeline-comment-header',
@@ -89,17 +90,33 @@
     '[data-testid="issue-body-header"]'
   ].join(',');
 
-  const ALWAYS_PIN_SELECTOR = [
-    '.merge-pr',
-    '.merge-message',
-    '.discussion-timeline-actions',
-    '[data-testid="merge-box"]'
+  const COMPOSER_SELECTOR = 'textarea, [data-testid="comment-composer"], [data-testid="markdown-editor"]';
+
+  const PR_BODY_SELECTOR = '[data-testid="issue-body"], [id^="issue-"]';
+  const PR_BODY_ID = /^issue-\d+$/;
+
+  const TIMELINE_ROOT_SELECTOR = [
+    '.js-discussion',
+    '[data-testid="issue-viewer-comments-container"]',
+    '[data-testid="issue-timeline"]',
+    '[data-testid="timeline"]'
   ].join(',');
 
-  const COMPOSER_SELECTOR = [
-    'textarea',
-    '[data-testid="comment-composer"]',
-    '[data-testid="markdown-editor"]'
+  const TIMELINE_ITEM_SELECTOR = [
+    '.js-timeline-item',
+    '.TimelineItem',
+    '[data-testid="timeline-item"]',
+    '[data-testid="issue-comment"]',
+    '[data-testid="issue-timeline-item"]'
+  ].join(',');
+
+  const FILES_ROOT_SELECTOR = '#files, [data-testid="diff-view"], .js-diff-progressive-container';
+
+  const THREAD_SELECTOR = [
+    '.js-resolvable-timeline-thread-container',
+    '.review-thread-component',
+    '[data-testid="review-thread"]',
+    'tr.inline-comments'
   ].join(',');
 
   function normalizeLogin(value) {
@@ -149,36 +166,47 @@
     }
   }
 
-  function readAuthor(element) {
-    const header = element.querySelector(HEADER_SELECTOR) || element;
-    const scope = header === element ? element : header;
-    const link = scope.querySelector(AUTHOR_SELECTOR) || element.querySelector(AUTHOR_SELECTOR);
-    const avatar = scope.querySelector(AVATAR_SELECTOR) || element.querySelector(AVATAR_SELECTOR);
-
-    let raw = '';
-    if (link) {
-      raw = (link.textContent || '').trim();
-      if (!raw || /\s/.test(raw)) raw = loginFromHref(link.getAttribute('href')) || raw;
-    }
-    if (!raw && avatar) {
-      raw = (avatar.getAttribute('alt') || '').trim();
-    }
-
-    const avatarSrc = avatar ? avatar.getAttribute('src') || '' : '';
-    const badgeScope = scope.querySelectorAll('.Label, span[class*="Label"], [data-testid="bot-badge"]');
-    let botBadge = false;
-    for (const node of badgeScope) {
-      if ((node.textContent || '').trim().toLowerCase() === 'bot') {
-        botBadge = true;
-        break;
+  function authoredAvatar(element, header) {
+    const candidates = header ? [header, element] : [element];
+    for (const scope of candidates) {
+      for (const image of scope.querySelectorAll(AVATAR_SELECTOR)) {
+        if (!image.closest(COMMENT_BODY_SELECTOR)) return image;
       }
+    }
+    return null;
+  }
+
+  function readAuthor(element) {
+    const header = element.querySelector(HEADER_SELECTOR);
+    const link = (header && header.querySelector(AUTHOR_SELECTOR)) || element.querySelector(AUTHOR_SELECTOR);
+
+    let raw = link ? (link.textContent || '').trim() : '';
+    if (link && (!raw || /\s/.test(raw))) raw = loginFromHref(link.getAttribute('href')) || raw;
+
+    let avatar;
+    const avatarImage = () => {
+      if (avatar === undefined) avatar = authoredAvatar(element, header);
+      return avatar;
+    };
+
+    if (!raw) {
+      const image = avatarImage();
+      raw = image ? (image.getAttribute('alt') || '').trim() : '';
     }
 
     return {
       login: normalizeLogin(raw),
       suffixedBot: /\[bot\]\s*$/i.test(raw),
-      appAvatar: /githubusercontent\.com\/in\//i.test(avatarSrc),
-      botBadge
+      get appAvatar() {
+        const image = avatarImage();
+        return Boolean(image) && /githubusercontent\.com\/in\//i.test(image.getAttribute('src') || '');
+      },
+      get botBadge() {
+        for (const node of (header || element).querySelectorAll(BADGE_SELECTOR)) {
+          if ((node.textContent || '').trim().toLowerCase() === 'bot') return true;
+        }
+        return false;
+      }
     };
   }
 
@@ -190,38 +218,30 @@
   }
 
   function hasCommentBody(row) {
-    return Boolean(row.querySelector('.comment-body, .js-comment-body, [data-testid="markdown-body"], markdown-accessiblity-table'));
+    return Boolean(row.querySelector(COMMENT_BODY_SELECTOR));
   }
 
-  function isPinned(row) {
-    if (row.querySelector(ALWAYS_PIN_SELECTOR) || (row.matches && row.matches(ALWAYS_PIN_SELECTOR))) return true;
-    if (hasCommentBody(row)) return false;
-    return Boolean(row.querySelector(COMPOSER_SELECTOR));
+  function isPrBody(row) {
+    const node = (row.matches && row.matches(PR_BODY_SELECTOR) && row) || row.querySelector(PR_BODY_SELECTOR);
+    if (!node) return false;
+    return node.id ? PR_BODY_ID.test(node.id) : true;
   }
 
-  const TIMELINE_ROOT_SELECTOR = [
-    '.js-discussion',
-    '[data-testid="issue-viewer-comments-container"]',
-    '[data-testid="issue-timeline"]',
-    '[data-testid="timeline"]'
-  ].join(',');
+  function classifyRow(row, rules) {
+    if (hasCommentBody(row)) {
+      const comments = commentNodes(row);
+      const authors = (comments.length ? comments : [row]).map(readAuthor);
+      const actor = authors.some((author) => classifyAuthor(author, rules) === 'human') ? 'human' : 'bot';
+      return { actor, form: 'comment' };
+    }
 
-  const TIMELINE_ITEM_SELECTOR = [
-    '.js-timeline-item',
-    '.TimelineItem',
-    '[data-testid="timeline-item"]',
-    '[data-testid="issue-comment"]',
-    '[data-testid="issue-timeline-item"]'
-  ].join(',');
+    if (row.querySelector(COMPOSER_SELECTOR)) return { actor: 'none', form: 'chrome' };
 
-  const FILES_ROOT_SELECTOR = '#files, [data-testid="diff-view"], .js-diff-progressive-container';
+    const author = readAuthor(row);
+    if (!author.login) return { actor: 'none', form: 'chrome' };
 
-  const THREAD_SELECTOR = [
-    '.js-resolvable-timeline-thread-container',
-    '.review-thread-component',
-    '[data-testid="review-thread"]',
-    'tr.inline-comments'
-  ].join(',');
+    return { actor: classifyAuthor(author, rules), form: 'event' };
+  }
 
   function outermost(elements, root) {
     const set = new Set(elements);
@@ -275,39 +295,19 @@
     return outermost(Array.from(root.querySelectorAll(THREAD_SELECTOR)), root);
   }
 
-  function classifyRow(row, rules) {
-    const comments = commentNodes(row);
-    if (!comments.length) {
-      const author = readAuthor(row);
-      if (hasCommentBody(row)) return classifyAuthor(author, rules);
-      return author.login && classifyAuthor(author, rules) === 'bot' ? 'bot' : 'activity';
-    }
-
-    let sawHuman = false;
-    let sawBot = false;
-    for (const comment of comments) {
-      if (classifyAuthor(readAuthor(comment), rules) === 'human') sawHuman = true;
-      else sawBot = true;
-    }
-    if (sawHuman) return 'human';
-    if (sawBot) return 'bot';
-    return 'activity';
-  }
-
-  root.PRLanes = {
+  root.PRLanes = Object.assign(root.PRLanes || {}, {
+    CLASSIFICATION_KEYS,
+    DEFAULTS,
     DEFAULT_BOT_LOGINS,
     buildRules,
     classifyAuthor,
     classifyRow,
-    commentNodes,
     findFilesRoot,
     findTimelineRoot,
-    isPinned,
+    isPrBody,
     normalizeLogin,
-    outermost,
     parseLoginList,
-    readAuthor,
     threadRows,
     timelineRows
-  };
+  });
 })(typeof globalThis !== 'undefined' ? globalThis : window);

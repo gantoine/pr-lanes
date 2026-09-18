@@ -23,15 +23,9 @@
           </select>
         </label>
 
-        <label class="field">
-          <span>Timeline events from people (labels, commits, reviews, merges)</span>
-          <select id="activityLane">
-            <option value="both">Show in both lanes</option>
-            <option value="human">Only in the Humans lane</option>
-            <option value="bot">Only in the Bots lane</option>
-            <option value="none">Only in All</option>
-          </select>
-          <span class="hint">Events from bots always follow the Bots lane.</span>
+        <label class="check">
+          <input type="checkbox" id="showActivity" />
+          <span>Show timeline events (labels, commits, reviews, merges) alongside comments</span>
         </label>
 
         <label class="check">
@@ -41,7 +35,7 @@
 
         <label class="check">
           <input type="checkbox" id="pinPrBody" />
-          <span>Always show the first comment, even when a bot opened the pull request</span>
+          <span>Always show the pull request description, even when a bot opened the pull request</span>
         </label>
 
         <label class="check">

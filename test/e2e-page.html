@@ -9,7 +9,7 @@
       <rails-partial style="display: contents">
         <div class="js-timeline-item" data-row="pr-body">
           <div class="TimelineItem">
-            <div class="timeline-comment js-comment-container">
+            <div class="timeline-comment js-comment-container" id="issue-2923192930">
               <div class="timeline-comment-header">
                 <img class="avatar" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="georges-antoine" />
                 <a class="author" href="/georges-antoine">georges-antoine</a>
@@ -21,12 +21,39 @@
 
         <div class="js-timeline-item" data-row="bot-comment">
           <div class="TimelineItem">
-            <div class="timeline-comment js-comment-container">
+            <div class="timeline-comment js-comment-container" id="issuecomment-1">
               <div class="timeline-comment-header">
                 <a class="author" href="/apps/github-actions">github-actions</a>
                 <span class="Label">bot</span>
               </div>
               <div class="comment-body">All checks have passed.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="js-timeline-item" data-row="avatar-bot">
+          <div class="TimelineItem">
+            <div class="timeline-comment js-comment-container" id="issuecomment-2">
+              <div class="timeline-comment-header">
+                <img class="avatar" src="https://avatars.githubusercontent.com/in/15368?v=4" alt="quiet-reviewer" />
+                <a class="author" href="/quiet-reviewer">quiet-reviewer</a>
+              </div>
+              <div class="comment-body">Deployed to preview.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="js-timeline-item" data-row="spoof-comment">
+          <div class="TimelineItem">
+            <div class="timeline-comment js-comment-container" id="issuecomment-3">
+              <div class="timeline-comment-header">
+                <img class="avatar" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="marius" />
+                <a class="author" href="/marius">marius</a>
+              </div>
+              <div class="comment-body">
+                Look at this bot avatar:
+                <img src="https://avatars.githubusercontent.com/in/9999?v=4" alt="dependabot[bot]" />
+              </div>
             </div>
           </div>
         </div>
@@ -78,11 +105,14 @@
             <span class="Label">bot</span> added the <span class="Label">stale</span> label
           </div>
         </div>
-      </rails-partial>
-    </div>
 
-    <div class="discussion-timeline-actions">
-      <form><textarea placeholder="Leave a comment"></textarea></form>
+        <div class="js-timeline-item" data-row="composer">
+          <div class="TimelineItem">
+            <img class="avatar" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="georges-antoine" />
+            <form><textarea placeholder="Leave a comment"></textarea></form>
+          </div>
+        </div>
+      </rails-partial>
     </div>
   </body>
 </html>
