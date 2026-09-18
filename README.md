@@ -8,11 +8,13 @@ Works on `github.com` pull requests and issues, in Chrome and Firefox.
 
 ## What it does
 
-- Adds a lane switcher — `Humans (n) | Bots | All` plus a gear for settings — to the pull request tab row,
+- Adds a lane switcher — `Humans | Bots | All` plus a gear for settings — to the pull request tab row,
   immediately after *Files changed*, so it costs no vertical space. It hops into GitHub's sticky header when
   you scroll past the tabs, and falls back to its own row above the timeline on pages with neither.
-- The number counts loaded human *comments*, not timeline events, so it matches what you would count by
-  eye. The Bots tab carries no number: there are always bot comments.
+- Each lane carries a dot that lights up when that lane holds comments and stays dim when it does not. No
+  counts: comments arrive while you read, and a number that drifts out of date is worse than no number.
+- In the Humans lane, bot reviewers drop out of the **Reviewers** sidebar too, so the list shows the people
+  whose review you are actually waiting on. Teams stay, since a team is people.
 - **Humans** shows people's comments and reviews. **Bots** shows everything posted by apps, CI, and review
   bots — including the timeline events they generate. **All** is GitHub's normal view.
 - A review thread that a bot started but a human replied to stays in the Humans lane — that is a human
@@ -52,7 +54,7 @@ Or click the gear in the lane switcher.
 | Show the lane switcher | on | Turn the bar off and drive it from the keyboard |
 | Extra bot accounts | — | Logins that post through a token and look human |
 | Always treat as human | — | Overrides every bot signal |
-| Name heuristics | on | Treat `*-bot`, `*-ci`, `*-app` logins as bots |
+| Name heuristics | on | Treat `*[bot]`, `*-bot`, `*-ci`, `*-app` logins as bots |
 
 ## How a bot is recognised
 

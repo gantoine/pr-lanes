@@ -25,6 +25,23 @@
       </div>
     </div>
 
+    <form class="js-issue-sidebar-form" data-role="reviewers">
+      <h3 class="discussion-sidebar-heading">Reviewers</h3>
+      <span class="css-truncate">
+        <div class="d-flex flex-items-center mb-2" data-row="reviewer-bot">
+          <a href="/apps/coderabbitai"><img class="avatar" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="coderabbitai" /></a>
+          <a href="/apps/coderabbitai">coderabbitai[bot]</a>
+        </div>
+        <div class="d-flex flex-items-center mb-2" data-row="reviewer-human">
+          <a href="/marius" data-hovercard-url="/users/marius/hovercard"><img class="avatar" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="marius" /></a>
+          <a href="/marius" data-hovercard-url="/users/marius/hovercard">marius</a>
+        </div>
+        <div class="d-flex flex-items-center mb-2" data-row="reviewer-team">
+          <a href="/orgs/PostHog/teams/team-security">Team Security</a>
+        </div>
+      </span>
+    </form>
+
     <div class="js-discussion">
       <rails-partial style="display: contents">
         <div class="js-timeline-item" data-row="pr-body">

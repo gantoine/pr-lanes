@@ -58,6 +58,9 @@
     const files = lanes.findFilesRoot(document);
     if (files) found.push({ root: files, rowsOf: lanes.threadRows });
 
+    const reviewers = lanes.findReviewersRoot(document);
+    if (reviewers) found.push({ root: reviewers, rowsOf: lanes.reviewerRows, classify: lanes.classifyReviewer });
+
     targets = found.length ? found : null;
     return found;
   }
@@ -80,7 +83,7 @@
 
     for (const row of target.rowsOf(target.root)) {
       if (row.dataset.prlanesRev !== revision) {
-        const kind = lanes.classifyRow(row, rules);
+        const kind = (target.classify || lanes.classifyRow)(row, rules);
         setData(row, 'prlanesActor', kind.actor);
         setData(row, 'prlanesForm', kind.form);
         setData(row, 'prlanesRev', revision);
@@ -106,7 +109,7 @@
     element.innerHTML = [
       '<span class="prlanes-brand">Lanes</span>',
       '<div class="prlanes-tabs">',
-      '<button type="button" class="prlanes-tab" data-lane="human"><span class="prlanes-dot prlanes-dot--human"></span>Humans<span class="prlanes-count" data-count="human">0</span></button>',
+      '<button type="button" class="prlanes-tab" data-lane="human"><span class="prlanes-dot prlanes-dot--human"></span>Humans</button>',
       '<button type="button" class="prlanes-tab" data-lane="bot"><span class="prlanes-dot prlanes-dot--bot"></span>Bots</button>',
       '<button type="button" class="prlanes-tab" data-lane="all">All</button>',
       '</div>',
@@ -129,7 +132,8 @@
 
     barParts = {
       tabs: Array.from(element.querySelectorAll('.prlanes-tab')),
-      human: element.querySelector('[data-count="human"]')
+      humanDot: element.querySelector('.prlanes-dot--human'),
+      botDot: element.querySelector('.prlanes-dot--bot')
     };
 
     return element;
@@ -199,7 +203,8 @@
       setAttr(button, 'aria-pressed', String(active));
     }
 
-    setText(barParts.human, String(counts.human));
+    barParts.humanDot.classList.toggle('prlanes-dot--on', counts.human > 0);
+    barParts.botDot.classList.toggle('prlanes-dot--on', counts.bot > 0);
   }
 
   function scan() {

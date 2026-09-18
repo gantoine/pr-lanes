@@ -104,11 +104,13 @@ const SNAPSHOT = `(() => {
     };
   }
   const bar = document.querySelector('.prlanes-bar');
+  if (!bar) return { rows, hasBar: false };
   return {
     rows,
+    hasBar: true,
     active: bar.querySelector('.prlanes-tab--active').dataset.lane,
-    humanCount: bar.querySelector('[data-count="human"]').textContent,
-    botCount: bar.querySelector('[data-count="bot"]') ? bar.querySelector('[data-count="bot"]').textContent : null,
+    humanDotOn: bar.querySelector('.prlanes-dot--human').classList.contains('prlanes-dot--on'),
+    botDotOn: bar.querySelector('.prlanes-dot--bot').classList.contains('prlanes-dot--on'),
     gearIcon: Boolean(bar.querySelector('.prlanes-settings .prlanes-gear')),
     barText: bar.textContent.trim(),
     barBeforeTimeline: bar.nextElementSibling === document.querySelector('.js-discussion'),
@@ -152,9 +154,14 @@ if (process.argv.includes('--serve')) {
 
     const evaluate = async (expression) => {
       const result = await browser.send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true }, sessionId);
-      if (result.exceptionDetails) throw new Error(result.exceptionDetails.text);
+      if (result.exceptionDetails) {
+        const details = result.exceptionDetails;
+        throw new Error(`${details.text}: ${(details.exception && (details.exception.description || details.exception.value)) || expression.slice(0, 80)}`);
+      }
       return result.result.value;
     };
+
+    const clickLane = (name) => evaluate(`document.querySelector('.prlanes-tab[data-lane="${name}"]').click()`);
 
     await waitFor(() => evaluate('Boolean(document.querySelector(".prlanes-bar"))'), 15000, 'lane bar injection');
 
@@ -177,13 +184,16 @@ if (process.argv.includes('--serve')) {
     assert.deepEqual(humans.rows['ai-review'], { actor: 'bot', form: 'comment', pinned: false, visible: false });
     assert.deepEqual(humans.rows['human-event-with-bot'], { actor: 'human', form: 'event', pinned: false, visible: true });
 
-    assert.equal(humans.humanCount, '3', 'the count is comments, not timeline events');
-    assert.equal(humans.botCount, null, 'the bots tab carries no count');
+    assert.equal(humans.humanDotOn, true, 'the human dot lights up when there are human comments');
+    assert.equal(humans.botDotOn, true, 'the bot dot lights up when there are bot comments');
     assert.equal(humans.gearIcon, true, 'settings is a gear icon');
     assert.doesNotMatch(humans.barText, /hidden/i, 'the bar carries no hidden-count text');
-    assert.equal(humans.barText, 'LanesHumans3BotsAll');
+    assert.equal(humans.barText, 'LanesHumansBotsAll', 'the bar carries no counts');
+    assert.deepEqual(humans.rows['reviewer-bot'], { actor: 'bot', form: 'reviewer', pinned: false, visible: false });
+    assert.deepEqual(humans.rows['reviewer-human'], { actor: 'human', form: 'reviewer', pinned: false, visible: true });
+    assert.deepEqual(humans.rows['reviewer-team'], { actor: 'human', form: 'reviewer', pinned: false, visible: true });
 
-    await evaluate('document.querySelector(".prlanes-tab[data-lane=\\"bot\\"]").click()');
+    await clickLane('bot');
     const bots = await waitFor(async () => {
       const state = await evaluate(SNAPSHOT);
       return state.active === 'bot' ? state : null;
@@ -195,6 +205,8 @@ if (process.argv.includes('--serve')) {
     assert.equal(bots.rows['human-event'].visible, false, 'human event hidden in Bots lane');
     assert.equal(bots.rows['pr-body'].visible, true, 'pull request body stays pinned in Bots lane');
     assert.equal(bots.rows['composer'].visible, true, 'comment composer is never hidden');
+    assert.equal(bots.rows['reviewer-bot'].visible, true, 'bot reviewers show in the Bots lane');
+    assert.equal(bots.rows['reviewer-human'].visible, false, 'human reviewers hide in the Bots lane');
     assert.equal(bots.rows['ai-review'].visible, true, 'AI-badged review visible in Bots lane');
 
     await evaluate("document.dispatchEvent(new KeyboardEvent('keydown', { key: '3', code: 'Digit3', altKey: true, bubbles: true }))");
@@ -214,14 +226,76 @@ if (process.argv.includes('--serve')) {
       timeline.appendChild(row);
     })()`);
 
-    await evaluate('document.querySelector(".prlanes-tab[data-lane=\\"human\\"]").click()');
+    await clickLane('human');
     const late = await waitFor(async () => {
       const state = await evaluate(SNAPSHOT);
       return state.rows['late-bot'] && state.rows['late-bot'].actor === 'bot' ? state : null;
     }, 5000, 'lazily loaded bot comment to be classified');
 
     assert.equal(late.rows['late-bot'].visible, false, 'lazily loaded bot comment hidden in Humans lane');
-    assert.equal(late.humanCount, '3', 'a lazily loaded bot comment does not change the human count');
+    assert.equal(late.botDotOn, true, 'the bot dot stays lit for a lazily loaded bot comment');
+
+    const settings = async (values) => {
+      await evaluate(`globalThis.prLanesStorage.sync.set(${JSON.stringify(values)})`);
+    };
+
+    await settings({ showActivity: false });
+    const noEvents = await waitFor(async () => {
+      const state = await evaluate(SNAPSHOT);
+      return state.rows['human-event'].visible === false ? state : null;
+    }, 5000, 'timeline events to hide when "show timeline events" is off');
+    assert.equal(noEvents.rows['pr-body'].visible, true, 'comments stay when events are hidden');
+    await settings({ showActivity: true });
+    await waitFor(async () => (await evaluate(SNAPSHOT)).rows['human-event'].visible, 5000, 'events to come back');
+
+    await settings({ pinPrBody: false });
+    const unpinned = await waitFor(async () => {
+      const state = await evaluate(SNAPSHOT);
+      return state.rows['pr-body'].pinned === false ? state : null;
+    }, 5000, 'the description to stop being pinned');
+    await clickLane('bot');
+    const unpinnedInBots = await waitFor(async () => {
+      const state = await evaluate(SNAPSHOT);
+      return state.active === 'bot' ? state : null;
+    }, 5000, 'the Bots lane');
+    assert.equal(unpinnedInBots.rows['pr-body'].visible, false, 'an unpinned description hides in the Bots lane');
+    assert.equal(unpinned.rows['pr-body'].pinned, false);
+    await settings({ pinPrBody: true });
+    await clickLane('human');
+    await waitFor(async () => (await evaluate(SNAPSHOT)).rows['pr-body'].pinned, 5000, 'the description to be pinned again');
+
+    await settings({ showBar: false });
+    await waitFor(async () => {
+      const state = await evaluate(SNAPSHOT);
+      return state.hasBar === false ? state : null;
+    }, 5000, 'the switcher to disappear when turned off');
+    await evaluate("document.dispatchEvent(new KeyboardEvent('keydown', { key: '2', code: 'Digit2', altKey: true, bubbles: true }))");
+    const keyboardOnly = await waitFor(async () => {
+      const state = await evaluate(SNAPSHOT);
+      return state.rows['bot-comment'].visible ? state : null;
+    }, 5000, 'Alt+2 to still switch lanes with the switcher hidden');
+    assert.equal(keyboardOnly.hasBar, false);
+    await settings({ showBar: true });
+    const barBack = await waitFor(async () => {
+      const state = await evaluate(SNAPSHOT);
+      return state.hasBar ? state : null;
+    }, 5000, 'the switcher to come back');
+    assert.equal(barBack.active, 'bot', 'the keyboard switch survived the switcher being hidden');
+    await clickLane('human');
+    await waitFor(async () => (await evaluate(SNAPSHOT)).active === 'human', 5000, 'back to the Humans lane');
+
+    await settings({ rememberPerPr: true });
+    await clickLane('all');
+    const remembered = await waitFor(
+      () => evaluate('globalThis.prLanesStorage.local.data["lane:PostHog/posthog#30000"] || null'),
+      5000,
+      'the lane to be remembered against this pull request'
+    );
+    assert.equal(remembered, 'all', 'the per-pull-request lane is stored under its own key');
+    await settings({ rememberPerPr: false });
+    await clickLane('human');
+    await waitFor(async () => (await evaluate(SNAPSHOT)).active === 'human', 5000, 'back to the Humans lane');
+
 
     await evaluate(`(() => {
       document.querySelector('[data-role="sticky"]').style.display = 'flex';
@@ -261,17 +335,22 @@ if (process.argv.includes('--serve')) {
 
     const liveHuman = await waitFor(async () => {
       const state = await evaluate(SNAPSHOT);
-      return state.humanCount === '4' ? state : null;
-    }, 5000, 'the human count to follow a comment that arrives live');
+      return state.rows['late-human'] && state.rows['late-human'].actor ? state : null;
+    }, 5000, 'a comment that arrives live to be classified');
     assert.equal(liveHuman.rows['late-human'].actor, 'human');
     assert.equal(liveHuman.rows['late-human'].visible, true, 'a comment that arrives live shows in the Humans lane');
+    assert.equal(liveHuman.humanDotOn, true);
 
-    await evaluate('document.querySelector(\'[data-row="late-human"]\').remove()');
-    const removedHuman = await waitFor(async () => {
+    await evaluate(`(() => {
+      for (const row of document.querySelectorAll('[data-row]')) {
+        if (row.dataset.prlanesActor === 'human' && row.dataset.prlanesForm === 'comment') row.remove();
+      }
+    })()`);
+    const noHumans = await waitFor(async () => {
       const state = await evaluate(SNAPSHOT);
-      return state.humanCount === '3' ? state : null;
-    }, 5000, 'the human count to drop when a comment goes away');
-    assert.equal(removedHuman.humanCount, '3');
+      return state.humanDotOn === false ? state : null;
+    }, 5000, 'the human dot to go dark when the last human comment goes away');
+    assert.equal(noHumans.botDotOn, true, 'the bot dot stays lit');
 
     await evaluate(`(() => {
       window.__mutations = 0;

@@ -117,6 +117,10 @@
 
   const FILES_ROOT_SELECTOR = '#files, [data-testid="diff-view"], .js-diff-progressive-container';
 
+  const SIDEBAR_SECTION_SELECTOR = '.js-issue-sidebar-form, [data-testid*="reviewers"], [data-testid="sidebar-reviewers-section"]';
+
+  const REVIEWER_LINK_SELECTOR = 'a[href^="/apps/"], a[data-hovercard-url], a.assignee, a[href^="/orgs/"]';
+
   const THREAD_SELECTOR = [
     '.js-resolvable-timeline-thread-container',
     '.review-thread-component',
@@ -252,6 +256,60 @@
     return { actor: classifyAuthor(author, rules), form: 'event' };
   }
 
+  function findReviewersRoot(scope) {
+    for (const section of (scope || document).querySelectorAll(SIDEBAR_SECTION_SELECTOR)) {
+      const heading = section.querySelector('h3, summary, [class*="Heading"], [class*="heading"]');
+      if (heading && /^\s*reviewers/i.test(heading.textContent || '')) return section;
+    }
+    return null;
+  }
+
+  function reviewerIdentities(element) {
+    const links = Array.from(element.querySelectorAll(REVIEWER_LINK_SELECTOR));
+    if (element.matches && element.matches(REVIEWER_LINK_SELECTOR)) links.push(element);
+    return new Set(links.map((link) => (link.getAttribute('href') || '').split('?')[0]));
+  }
+
+  function reviewerRows(root) {
+    const rows = new Set();
+
+    for (const link of root.querySelectorAll(REVIEWER_LINK_SELECTOR)) {
+      let row = link;
+      let owned = reviewerIdentities(row).size;
+
+      while (row.parentElement && row.parentElement !== root) {
+        const parentOwned = reviewerIdentities(row.parentElement).size;
+        if (parentOwned !== owned) break;
+        row = row.parentElement;
+        owned = parentOwned;
+      }
+
+      rows.add(row);
+    }
+
+    return outermost(Array.from(rows), root);
+  }
+
+  function classifyReviewer(row, rules) {
+    const link = row.querySelector(REVIEWER_LINK_SELECTOR);
+    const href = link ? link.getAttribute('href') || '' : '';
+    const app = href.match(APP_HREF);
+
+    let raw = link ? (link.textContent || '').trim() : '';
+    if (!raw || /\s/.test(raw)) raw = (app ? app[1] : loginFromHref(href)) || raw;
+
+    const image = row.querySelector(AVATAR_SELECTOR);
+
+    const author = {
+      login: normalizeLogin(raw),
+      suffixedBot: /\[bot\]\s*$/i.test(raw),
+      appLink: Boolean(app),
+      appAvatar: Boolean(image) && /githubusercontent\.com\/in\//i.test(image.getAttribute('src') || '')
+    };
+
+    return { actor: classifyAuthor(author, rules), form: 'reviewer' };
+  }
+
   function outermost(elements, root) {
     const set = new Set(elements);
     return elements.filter((element) => {
@@ -310,12 +368,15 @@
     DEFAULT_BOT_LOGINS,
     buildRules,
     classifyAuthor,
+    classifyReviewer,
     classifyRow,
     findFilesRoot,
+    findReviewersRoot,
     findTimelineRoot,
     isPrBody,
     normalizeLogin,
     parseLoginList,
+    reviewerRows,
     threadRows,
     timelineRows
   });
