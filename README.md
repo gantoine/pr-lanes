@@ -58,11 +58,18 @@ event, or page furniture such as the comment box). Lanes filter on the author; t
 setting filters on the form. Page furniture matches no hiding rule at all, so anything the extension does
 not recognise is left alone rather than hidden.
 
-Authorship is decided in order: the human override list, a `name[bot]` login, the built-in bot list (~36
-accounts that post through a token and carry no other signal, plus the most common apps), a GitHub App
-avatar (`avatars.githubusercontent.com/in/…`) in the comment header, the `bot` badge next to the author,
-then the name heuristics. Anything unrecognised counts as human, so a misdetection hides nothing. Avatars
-inside a comment body are ignored, so a commenter cannot post a bot avatar to hide their own comment.
+Authorship is decided in order: the human override list, a `name[bot]` login **or an author link pointing at
+`/apps/…`** (every GitHub App has one, whatever display name it uses — this is what catches `Copilot`, which
+shows an `AI` badge and no bot suffix), the built-in bot list (~37 accounts that post through a token and
+carry no other signal, plus the most common apps), a GitHub App avatar
+(`avatars.githubusercontent.com/in/…`), a `bot` or `AI` badge next to the author, then the name heuristics.
+Anything unrecognised counts as human, so a misdetection hides nothing.
+
+Two things keep that from misfiring in either direction. Avatars inside a comment body are ignored, so a
+commenter cannot post a bot avatar to hide their own comment. Badges are read next to the author only, not
+anywhere in the row, so an event like "you requested a review from Copilot" stays in the Humans lane — it is
+your action, not the bot's. And a comment box with no author of its own (a collapsed "Show resolved" thread,
+for instance) does not vote on who wrote the row it sits in.
 
 Accounts that comment through a personal access token — some Codecov and internal release setups — carry no
 bot signal at all. Add those under *Extra bot accounts*.

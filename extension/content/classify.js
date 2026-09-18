@@ -23,6 +23,7 @@
     'codecov-commenter',
     'codspeed-hq',
     'coderabbitai',
+    'copilot',
     'copilot-pull-request-reviewer',
     'deepsource-autofix',
     'dependabot',
@@ -82,6 +83,10 @@
   const AVATAR_SELECTOR = 'img[class*="avatar" i], img[data-component="Avatar"], img[src*="avatars."]';
 
   const BADGE_SELECTOR = '.Label, span[class*="Label"], [data-testid="bot-badge"]';
+
+  const BADGE_TEXT = ['bot', 'ai'];
+
+  const APP_HREF = /^\/apps\/([^/?#]+)/;
 
   const HEADER_SELECTOR = [
     '.timeline-comment-header',
@@ -147,7 +152,7 @@
   function classifyAuthor(author, rules) {
     const login = normalizeLogin(author && author.login);
     if (login && rules.humans.has(login)) return 'human';
-    if (author && author.suffixedBot) return 'bot';
+    if (author && (author.suffixedBot || author.appLink)) return 'bot';
     if (login && rules.bots.has(login)) return 'bot';
     if (author && author.appAvatar) return 'bot';
     if (author && author.botBadge) return 'bot';
@@ -179,9 +184,11 @@
   function readAuthor(element) {
     const header = element.querySelector(HEADER_SELECTOR);
     const link = (header && header.querySelector(AUTHOR_SELECTOR)) || element.querySelector(AUTHOR_SELECTOR);
+    const href = link ? link.getAttribute('href') || '' : '';
+    const app = href.match(APP_HREF);
 
     let raw = link ? (link.textContent || '').trim() : '';
-    if (link && (!raw || /\s/.test(raw))) raw = loginFromHref(link.getAttribute('href')) || raw;
+    if (link && (!raw || /\s/.test(raw))) raw = (app ? app[1] : loginFromHref(href)) || raw;
 
     let avatar;
     const avatarImage = () => {
@@ -197,13 +204,15 @@
     return {
       login: normalizeLogin(raw),
       suffixedBot: /\[bot\]\s*$/i.test(raw),
+      appLink: Boolean(app),
       get appAvatar() {
         const image = avatarImage();
         return Boolean(image) && /githubusercontent\.com\/in\//i.test(image.getAttribute('src') || '');
       },
       get botBadge() {
-        for (const node of (header || element).querySelectorAll(BADGE_SELECTOR)) {
-          if ((node.textContent || '').trim().toLowerCase() === 'bot') return true;
+        const scope = header || (link && link.parentElement) || element;
+        for (const node of scope.querySelectorAll(BADGE_SELECTOR)) {
+          if (BADGE_TEXT.includes((node.textContent || '').trim().toLowerCase())) return true;
         }
         return false;
       }
@@ -229,8 +238,8 @@
 
   function classifyRow(row, rules) {
     if (hasCommentBody(row)) {
-      const comments = commentNodes(row);
-      const authors = (comments.length ? comments : [row]).map(readAuthor);
+      const authors = commentNodes(row).map(readAuthor).filter((author) => author.login);
+      if (!authors.length) authors.push(readAuthor(row));
       const actor = authors.some((author) => classifyAuthor(author, rules) === 'human') ? 'human' : 'bot';
       return { actor, form: 'comment' };
     }

@@ -169,10 +169,13 @@ if (process.argv.includes('--serve')) {
     assert.deepEqual(humans.rows['human-event'], { actor: 'human', form: 'event', pinned: false, visible: true });
     assert.deepEqual(humans.rows['bot-event'], { actor: 'bot', form: 'event', pinned: false, visible: false });
     assert.deepEqual(humans.rows['composer'], { actor: 'none', form: 'chrome', pinned: false, visible: true });
+    assert.deepEqual(humans.rows['resolved-thread-review'], { actor: 'bot', form: 'comment', pinned: false, visible: false });
+    assert.deepEqual(humans.rows['ai-review'], { actor: 'bot', form: 'comment', pinned: false, visible: false });
+    assert.deepEqual(humans.rows['human-event-with-bot'], { actor: 'human', form: 'event', pinned: false, visible: true });
 
-    assert.equal(humans.humanCount, '4');
-    assert.equal(humans.botCount, '4');
-    assert.equal(humans.note, '4 items hidden');
+    assert.equal(humans.humanCount, '5');
+    assert.equal(humans.botCount, '6');
+    assert.equal(humans.note, '6 items hidden');
 
     await evaluate('document.querySelector(".prlanes-tab[data-lane=\\"bot\\"]").click()');
     const bots = await waitFor(async () => {
@@ -186,7 +189,8 @@ if (process.argv.includes('--serve')) {
     assert.equal(bots.rows['human-event'].visible, false, 'human event hidden in Bots lane');
     assert.equal(bots.rows['pr-body'].visible, true, 'pull request body stays pinned in Bots lane');
     assert.equal(bots.rows['composer'].visible, true, 'comment composer is never hidden');
-    assert.equal(bots.note, '3 items hidden');
+    assert.equal(bots.rows['ai-review'].visible, true, 'AI-badged review visible in Bots lane');
+    assert.equal(bots.note, '4 items hidden');
 
     await evaluate("document.dispatchEvent(new KeyboardEvent('keydown', { key: '3', code: 'Digit3', altKey: true, bubbles: true }))");
     const all = await waitFor(async () => {
@@ -213,7 +217,7 @@ if (process.argv.includes('--serve')) {
     }, 5000, 'lazily loaded bot comment to be classified');
 
     assert.equal(late.rows['late-bot'].visible, false, 'lazily loaded bot comment hidden in Humans lane');
-    assert.equal(late.botCount, '5', 'counts include lazily loaded rows');
+    assert.equal(late.botCount, '7', 'counts include lazily loaded rows');
 
     await evaluate(`(() => {
       window.__mutations = 0;

@@ -89,3 +89,13 @@ test('apps dropped from the built-in list are still caught by their bot signals'
     assert.equal(kind({ login, appAvatar: true }), 'bot');
   }
 });
+
+test('an author linking to /apps/ is a bot whatever the display name says', () => {
+  assert.equal(kind({ login: 'copilot', appLink: true }), 'bot');
+  assert.equal(kind({ login: 'a-friendly-name', appLink: true }), 'bot');
+  assert.equal(kind({ login: 'a-friendly-name' }), 'human');
+});
+
+test('the human override still wins over an app link', () => {
+  assert.equal(kind({ login: 'copilot', appLink: true }, { forceHumans: 'copilot' }), 'human');
+});
