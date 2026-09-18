@@ -251,6 +251,29 @@ if (process.argv.includes('--serve')) {
     assert.equal(headerless.slot, 'timeline', 'the bar falls back to its own row above the timeline');
 
     await evaluate(`(() => {
+      const timeline = document.querySelector('.js-discussion rails-partial');
+      const row = document.createElement('div');
+      row.className = 'js-timeline-item';
+      row.dataset.row = 'late-human';
+      row.innerHTML = '<div class="TimelineItem"><div class="timeline-comment"><div class="timeline-comment-header"><a class="author" href="/marius">marius</a></div><div class="comment-body">Landing this now.</div></div></div>';
+      timeline.appendChild(row);
+    })()`);
+
+    const liveHuman = await waitFor(async () => {
+      const state = await evaluate(SNAPSHOT);
+      return state.humanCount === '4' ? state : null;
+    }, 5000, 'the human count to follow a comment that arrives live');
+    assert.equal(liveHuman.rows['late-human'].actor, 'human');
+    assert.equal(liveHuman.rows['late-human'].visible, true, 'a comment that arrives live shows in the Humans lane');
+
+    await evaluate('document.querySelector(\'[data-row="late-human"]\').remove()');
+    const removedHuman = await waitFor(async () => {
+      const state = await evaluate(SNAPSHOT);
+      return state.humanCount === '3' ? state : null;
+    }, 5000, 'the human count to drop when a comment goes away');
+    assert.equal(removedHuman.humanCount, '3');
+
+    await evaluate(`(() => {
       window.__mutations = 0;
       window.__mutationLog = [];
       const observer = new MutationObserver((records) => {
