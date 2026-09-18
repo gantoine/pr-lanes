@@ -212,11 +212,26 @@ if (process.argv.includes('--serve')) {
     assert.equal(bots.rows['reviewer-human'].visible, false, 'human reviewers hide in the Bots lane');
     assert.equal(bots.rows['ai-review'].visible, true, 'AI-badged review visible in Bots lane');
 
-    await clickLane('all');
-    const all = await waitFor(async () => {
-      const state = await evaluate(SNAPSHOT);
-      return state.active === 'all' ? state : null;
-    }, 5000, 'switch to All');
+    const pressH = () =>
+      evaluate("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'h', bubbles: true }))");
+    const lanesAfter = (expected, label) =>
+      waitFor(async () => {
+        const state = await evaluate(SNAPSHOT);
+        return state.active === expected ? state : null;
+      }, 5000, label);
+
+    await pressH();
+    const all = await lanesAfter('all', 'h to move Bots -> All');
+
+    await evaluate(`(() => {
+      const box = document.querySelector('[data-row="composer"] textarea');
+      box.focus();
+      box.dispatchEvent(new KeyboardEvent('keydown', { key: 'h', bubbles: true }));
+    })()`);
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    const whileTyping = await evaluate(SNAPSHOT);
+    assert.equal(whileTyping.active, 'all', 'h typed into a comment box does not switch lanes');
+    await evaluate('document.activeElement.blur()');
 
     assert.ok(Object.values(all.rows).every((row) => row.visible), 'every row visible in All');
 
@@ -229,7 +244,8 @@ if (process.argv.includes('--serve')) {
       timeline.appendChild(row);
     })()`);
 
-    await clickLane('human');
+    await pressH();
+    await lanesAfter('human', 'h to wrap All -> Humans');
     const late = await waitFor(async () => {
       const state = await evaluate(SNAPSHOT);
       return state.rows['late-bot'] && state.rows['late-bot'].actor === 'bot' ? state : null;

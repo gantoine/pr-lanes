@@ -18,6 +18,7 @@ Works on `github.com` pull requests and issues, in Chrome and Firefox.
   of date is worse than no number.
 - In the Humans lane, bot reviewers drop out of the **Reviewers** sidebar too, so the list shows the people
   whose review you are actually waiting on. Teams stay, since a team is people.
+- Press `h` to cycle Humans → Bots → All. It is ignored while you are typing in a comment box.
 - **Humans** shows people's comments and reviews. **Bots** shows everything posted by apps, CI, and review
   bots — including the timeline events they generate. **All** is GitHub's normal view.
 - A review thread that a bot started but a human replied to stays in the Humans lane — that is a human
