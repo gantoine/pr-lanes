@@ -93,7 +93,8 @@
       }
 
       const actor = row.dataset.prlanesActor;
-      if (row.dataset.prlanesForm === 'comment' && counts[actor] !== undefined) counts[actor] += 1;
+      const counted = row.dataset.prlanesForm === 'comment' && row.dataset.prlanesPin !== '1';
+      if (counted && counts[actor] !== undefined) counts[actor] += 1;
     }
 
     setData(target.root, 'prlanesLane', lane);

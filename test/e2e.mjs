@@ -318,7 +318,8 @@ if (process.argv.includes('--serve')) {
 
     await evaluate(`(() => {
       for (const row of document.querySelectorAll('[data-row]')) {
-        if (row.dataset.prlanesActor === 'human' && row.dataset.prlanesForm === 'comment') row.remove();
+        const comment = row.dataset.prlanesActor === 'human' && row.dataset.prlanesForm === 'comment';
+        if (comment && row.dataset.prlanesPin !== '1') row.remove();
       }
     })()`);
     const noHumans = await waitFor(async () => {
@@ -326,6 +327,8 @@ if (process.argv.includes('--serve')) {
       return state.humanDotOn === false ? state : null;
     }, 5000, 'the human dot to go dark when the last human comment goes away');
     assert.equal(noHumans.botDotOn, true, 'the bot dot stays lit');
+    assert.equal(noHumans.rows['pr-body'].visible, true, 'the description is still there');
+    assert.equal(noHumans.rows['pr-body'].actor, 'human', 'the description alone does not light the human dot');
 
     await evaluate(`(() => {
       window.__mutations = 0;

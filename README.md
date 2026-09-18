@@ -13,7 +13,9 @@ Works on `github.com` pull requests and issues, in Chrome and Firefox.
   sticky header. Pages with neither an avatar nor a header get it in the tab row, or its own row above the
   timeline.
 - Humans and Bots colour themselves — green or amber when that lane holds comments, grey when it does not.
-  No counts: comments arrive while you read, and a number that drifts out of date is worse than no number.
+  The pull request description does not count: every pull request has one, so counting it would light the
+  human side of every page. No counts either: comments arrive while you read, and a number that drifts out
+  of date is worse than no number.
 - In the Humans lane, bot reviewers drop out of the **Reviewers** sidebar too, so the list shows the people
   whose review you are actually waiting on. Teams stay, since a team is people.
 - **Humans** shows people's comments and reviews. **Bots** shows everything posted by apps, CI, and review
