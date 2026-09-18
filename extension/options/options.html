@@ -14,6 +14,11 @@
       <section>
         <h2>Lanes</h2>
 
+        <label class="check">
+          <input type="checkbox" id="rememberPerPr" />
+          <span>Remember the lane per pull request instead of globally</span>
+        </label>
+
         <label class="field">
           <span>Default lane</span>
           <select id="defaultLane">
@@ -32,11 +37,6 @@
           <input type="checkbox" id="hideActivityInHumanLane" />
           <span>Hide timeline events (labels, commits, reviews, merges) in the Humans lane, leaving only
             what people wrote. They still appear in the Bots and All lanes.</span>
-        </label>
-
-        <label class="check">
-          <input type="checkbox" id="rememberPerPr" />
-          <span>Remember the lane per pull request instead of globally</span>
         </label>
 
       </section>
