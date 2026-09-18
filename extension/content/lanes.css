@@ -94,11 +94,11 @@
 }
 
 .prlanes-dot--human {
-  --prlanes-dot-color: var(--bgColor-success-emphasis, var(--color-success-emphasis, #2da44e));
+  --prlanes-dot-color: var(--fgColor-success, var(--color-success-fg, #2da44e));
 }
 
 .prlanes-dot--bot {
-  --prlanes-dot-color: var(--bgColor-attention-emphasis, var(--color-attention-emphasis, #bf8700));
+  --prlanes-dot-color: var(--fgColor-attention, var(--color-attention-fg, #bf8700));
 }
 
 .prlanes-settings {
