@@ -8,11 +8,12 @@ Works on `github.com` pull requests and issues, in Chrome and Firefox.
 
 ## What it does
 
-- Adds a lane switcher — `Humans | Bots | All` plus a gear for settings — to the pull request tab row,
-  immediately after *Files changed*, so it costs no vertical space. It hops into GitHub's sticky header when
-  you scroll past the tabs, and falls back to its own row above the timeline on pages with neither.
-- Each lane carries a dot: grey when that lane holds no comments, green or amber when it does. No counts:
-  comments arrive while you read, and a number that drifts out of date is worse than no number.
+- Adds a lane switcher that costs no vertical space: at rest it is a vertical strip of icons in the left
+  gutter, tucked under the author's avatar. Scroll past it and it becomes a horizontal switcher in GitHub's
+  sticky header. Pages with neither an avatar nor a header get it in the tab row, or its own row above the
+  timeline.
+- Humans and Bots colour themselves — green or amber when that lane holds comments, grey when it does not.
+  No counts: comments arrive while you read, and a number that drifts out of date is worse than no number.
 - In the Humans lane, bot reviewers drop out of the **Reviewers** sidebar too, so the list shows the people
   whose review you are actually waiting on. Teams stay, since a team is people.
 - **Humans** shows people's comments and reviews. **Bots** shows everything posted by apps, CI, and review

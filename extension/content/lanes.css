@@ -16,6 +16,61 @@
   line-height: 20px;
 }
 
+.prlanes-icon {
+  display: none;
+  line-height: 0;
+}
+
+.prlanes-bar--rail {
+  position: absolute;
+  z-index: 5;
+  flex-direction: column;
+  gap: 6px;
+  width: 40px;
+  margin: 0;
+  padding: 4px;
+}
+
+.prlanes-bar--rail .prlanes-brand,
+.prlanes-bar--rail .prlanes-label,
+.prlanes-bar--rail .prlanes-dot {
+  display: none;
+}
+
+.prlanes-bar--rail .prlanes-icon {
+  display: block;
+}
+
+.prlanes-bar--rail .prlanes-tabs {
+  flex-direction: column;
+  gap: 2px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.prlanes-bar--rail .prlanes-tab {
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  color: var(--fgColor-muted, var(--color-fg-muted, #59636e));
+}
+
+.prlanes-bar--rail .prlanes-tab--lit {
+  color: var(--prlanes-dot-color, inherit);
+}
+
+.prlanes-bar--rail .prlanes-tab--active,
+.prlanes-bar--rail .prlanes-tab--active.prlanes-tab--lit {
+  color: var(--fgColor-onEmphasis, var(--color-fg-on-emphasis, #ffffff));
+}
+
+.prlanes-bar--rail .prlanes-settings {
+  margin: 2px 0 0;
+  align-self: center;
+}
+
 .prlanes-bar--header,
 .prlanes-bar--tabs {
   position: static;
@@ -89,15 +144,15 @@
   transition: background-color 120ms ease;
 }
 
-.prlanes-dot--on {
+.prlanes-tab--lit .prlanes-dot {
   background: var(--prlanes-dot-color);
 }
 
-.prlanes-dot--human {
+.prlanes-tab[data-lane="human"] {
   --prlanes-dot-color: var(--fgColor-success, var(--color-success-fg, #2da44e));
 }
 
-.prlanes-dot--bot {
+.prlanes-tab[data-lane="bot"] {
   --prlanes-dot-color: var(--fgColor-attention, var(--color-attention-fg, #bf8700));
 }
 

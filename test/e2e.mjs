@@ -109,12 +109,14 @@ const SNAPSHOT = `(() => {
     rows,
     hasBar: true,
     active: bar.querySelector('.prlanes-tab--active').dataset.lane,
-    humanDotOn: bar.querySelector('.prlanes-dot--human').classList.contains('prlanes-dot--on'),
-    botDotOn: bar.querySelector('.prlanes-dot--bot').classList.contains('prlanes-dot--on'),
+    humanDotOn: bar.querySelector('[data-lane="human"]').classList.contains('prlanes-tab--lit'),
+    botDotOn: bar.querySelector('[data-lane="bot"]').classList.contains('prlanes-tab--lit'),
+    icons: bar.querySelectorAll('.prlanes-icon svg').length,
     gearIcon: Boolean(bar.querySelector('.prlanes-settings .prlanes-gear')),
     barText: bar.textContent.trim(),
     barBeforeTimeline: bar.nextElementSibling === document.querySelector('.js-discussion'),
-    slot: bar.classList.contains('prlanes-bar--tabs') ? 'tabs' : (bar.classList.contains('prlanes-bar--header') ? 'header' : 'timeline'),
+    slot: ['rail', 'tabs', 'header'].find((name) => bar.classList.contains('prlanes-bar--' + name)) || 'timeline',
+    railLeft: bar.style.left,
     slotParent: String(bar.parentElement.className)
   };
 })()`;
@@ -168,8 +170,9 @@ if (process.argv.includes('--serve')) {
     const humans = await evaluate(SNAPSHOT);
 
     assert.equal(humans.active, 'human', 'default lane is Humans');
-    assert.equal(humans.slot, 'tabs', 'lane bar sits in the tab row at rest');
-    assert.match(humans.slotParent, /TabNavList/, 'lane bar sits next to the tabs themselves');
+    assert.equal(humans.slot, 'rail', 'lane switcher is a rail under the author avatar at rest');
+    assert.equal(humans.railLeft, '-72px', 'the rail lines up with the avatar gutter');
+    assert.equal(humans.icons, 3, 'each lane carries an icon');
 
     assert.deepEqual(humans.rows['pr-body'], { actor: 'human', form: 'comment', pinned: true, visible: true });
     assert.deepEqual(humans.rows['bot-comment'], { actor: 'bot', form: 'comment', pinned: false, visible: false });
@@ -261,6 +264,13 @@ if (process.argv.includes('--serve')) {
     await waitFor(async () => (await evaluate(SNAPSHOT)).active === 'human', 5000, 'back to the Humans lane');
 
 
+    await evaluate('document.querySelector(\'[data-role="avatar"]\').remove()');
+    const tabs = await waitFor(async () => {
+      const state = await evaluate(SNAPSHOT);
+      return state.slot === 'tabs' ? state : null;
+    }, 5000, 'the switcher to fall back to the tab row without an avatar');
+    assert.match(tabs.slotParent, /TabNavList/, 'the fallback sits next to the tabs');
+
     await evaluate(`(() => {
       document.querySelector('[data-role="sticky"]').style.display = 'flex';
       window.dispatchEvent(new Event('scroll'));
@@ -280,6 +290,7 @@ if (process.argv.includes('--serve')) {
       return state.slot === 'tabs' ? state : null;
     }, 5000, 'lane bar to return to the tab row');
     assert.match(unstuck.slotParent, /TabNavList/);
+    assert.equal(unstuck.railLeft, '', 'rail positioning is cleared when the bar leaves the rail');
 
     await evaluate('document.querySelector(\'[data-role="header"]\').remove()');
     const headerless = await waitFor(async () => {
