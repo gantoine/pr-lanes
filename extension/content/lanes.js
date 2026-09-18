@@ -31,7 +31,7 @@
   const HEADER_SLOT_SELECTOR = '[class*="PageHeader-TitleArea"], .gh-header-title';
   const TAB_NAV_SELECTOR = 'nav[class*="TabNav"], nav.tabnav-tabs, .tabnav-tabs';
   const AVATAR_RAIL_SELECTOR = '.TimelineItem-avatar, .timeline-comment-avatar';
-  const RAIL_GAP = 8;
+  const RAIL_GAP = 12;
 
   const read = (area, defaults) => Promise.resolve().then(() => area.get(defaults)).catch(() => defaults);
   const write = (area, values) => Promise.resolve().then(() => area.set(values)).catch(() => {});
