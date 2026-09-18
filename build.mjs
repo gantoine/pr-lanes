@@ -8,12 +8,18 @@ const root = import.meta.dirname;
 const source = path.join(root, 'extension');
 const dist = path.join(root, 'dist');
 
-const GECKO_ID = 'pr-lanes@georges-antoine.local';
+const GECKO_ID = 'pr-lanes@gantoine.com';
 
 function firefoxManifest(manifest) {
   return {
     ...manifest,
-    browser_specific_settings: { gecko: { id: GECKO_ID, strict_min_version: '115.0' } },
+    browser_specific_settings: {
+      gecko: {
+        id: GECKO_ID,
+        strict_min_version: '115.0',
+        data_collection_permissions: { required: ['none'] }
+      }
+    },
     options_ui: { ...manifest.options_ui, browser_style: false }
   };
 }
