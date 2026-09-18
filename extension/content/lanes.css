@@ -16,6 +16,25 @@
   line-height: 20px;
 }
 
+.prlanes-bar--header {
+  position: static;
+  order: 99;
+  margin: 0 0 0 auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+
+.prlanes-bar--header .prlanes-brand {
+  display: none;
+}
+
+.prlanes-bar--header .prlanes-note {
+  white-space: nowrap;
+}
+
 .prlanes-brand {
   font-weight: 600;
   letter-spacing: 0.04em;

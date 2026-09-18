@@ -20,7 +20,13 @@
   let barParts = null;
   let targets = null;
   let scanHandle = 0;
+  let placeHandle = 0;
+  let lastTarget = null;
   let lastUrl = location.href;
+
+  const STICKY_HEADER_SELECTOR = '[class*="stickyHeader" i], .gh-header-sticky, [data-testid*="sticky-header"]';
+  const HEADER_SELECTOR = '[class*="PullRequestHeader"], [class*="PageHeader-PageHeader"], .gh-header-show';
+  const HEADER_SLOT_SELECTOR = '[class*="PageHeader-TitleArea"], .gh-header-title';
 
   const read = (area, defaults) => Promise.resolve().then(() => area.get(defaults)).catch(() => defaults);
   const write = (area, values) => Promise.resolve().then(() => area.set(values)).catch(() => {});
@@ -139,12 +145,46 @@
     return element;
   }
 
+  function visible(element) {
+    return Boolean(element) && element.getBoundingClientRect().height > 0;
+  }
+
+  function headerSlot() {
+    const sticky = document.querySelector(STICKY_HEADER_SELECTOR);
+    if (visible(sticky)) return sticky.querySelector(HEADER_SLOT_SELECTOR) || sticky;
+
+    for (const header of document.querySelectorAll(HEADER_SELECTOR)) {
+      if (sticky && sticky.contains(header)) continue;
+      if (visible(header)) return header.querySelector(HEADER_SLOT_SELECTOR) || header;
+    }
+
+    return null;
+  }
+
+  function queuePlace() {
+    if (placeHandle || !lastTarget) return;
+    placeHandle = requestAnimationFrame(() => {
+      placeHandle = 0;
+      if (lastTarget && lastTarget.root.isConnected) placeBar(lastTarget);
+    });
+  }
+
   function placeBar(target) {
+    lastTarget = target;
     if (!settings.showBar) {
       if (bar && bar.isConnected) bar.remove();
       return;
     }
     if (!bar) bar = buildBar();
+
+    const slot = headerSlot();
+    bar.classList.toggle('prlanes-bar--header', Boolean(slot));
+
+    if (slot) {
+      if (bar.parentElement !== slot) slot.appendChild(bar);
+      return;
+    }
+
     if (bar.nextElementSibling !== target.root && target.root.parentElement) {
       target.root.parentElement.insertBefore(bar, target.root);
     }
@@ -258,6 +298,7 @@
     }
 
     document.addEventListener('keydown', onKeydown, true);
+    window.addEventListener('scroll', queuePlace, { passive: true });
 
     if (api.storage.onChanged) {
       api.storage.onChanged.addListener((changes, area) => {

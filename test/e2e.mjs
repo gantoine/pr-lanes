@@ -110,7 +110,8 @@ const SNAPSHOT = `(() => {
     humanCount: bar.querySelector('[data-count="human"]').textContent,
     botCount: bar.querySelector('[data-count="bot"]').textContent,
     note: bar.querySelector('[data-note]').textContent,
-    barBeforeTimeline: bar.nextElementSibling === document.querySelector('.js-discussion')
+    barBeforeTimeline: bar.nextElementSibling === document.querySelector('.js-discussion'),
+    inHeader: bar.classList.contains('prlanes-bar--header') && /TitleArea/.test(bar.parentElement.className)
   };
 })()`;
 
@@ -158,7 +159,7 @@ if (process.argv.includes('--serve')) {
     const humans = await evaluate(SNAPSHOT);
 
     assert.equal(humans.active, 'human', 'default lane is Humans');
-    assert.equal(humans.barBeforeTimeline, true, 'lane bar sits above the timeline');
+    assert.equal(humans.inHeader, true, 'lane bar sits inside the pull request header');
 
     assert.deepEqual(humans.rows['pr-body'], { actor: 'human', form: 'comment', pinned: true, visible: true });
     assert.deepEqual(humans.rows['bot-comment'], { actor: 'bot', form: 'comment', pinned: false, visible: false });
@@ -219,15 +220,29 @@ if (process.argv.includes('--serve')) {
     assert.equal(late.rows['late-bot'].visible, false, 'lazily loaded bot comment hidden in Humans lane');
     assert.equal(late.botCount, '7', 'counts include lazily loaded rows');
 
+    await evaluate('document.querySelector(\'[data-role="header"]\').remove()');
+    const headerless = await waitFor(async () => {
+      const state = await evaluate(SNAPSHOT);
+      return state.barBeforeTimeline ? state : null;
+    }, 5000, 'lane bar to fall back above the timeline when there is no header');
+    assert.equal(headerless.inHeader, false, 'the header styling is dropped with the header');
+
     await evaluate(`(() => {
       window.__mutations = 0;
-      const observer = new MutationObserver((records) => { window.__mutations += records.length; });
+      window.__mutationLog = [];
+      const observer = new MutationObserver((records) => {
+        window.__mutations += records.length;
+        for (const record of records.slice(0, 4)) {
+          const target = record.target.nodeType === 1 ? record.target.tagName.toLowerCase() + '.' + String(record.target.className || '').slice(0, 30) : String(record.target.nodeValue).slice(0, 30);
+          window.__mutationLog.push(record.type + ' ' + (record.attributeName || '') + ' on ' + target);
+        }
+      });
       observer.observe(document.body, { childList: true, subtree: true, attributes: true, characterData: true });
       window.__stopCounting = () => observer.disconnect();
     })()`);
     await new Promise((resolve) => setTimeout(resolve, 1500));
-    const idleMutations = await evaluate('(() => { window.__stopCounting(); return window.__mutations; })()');
-    assert.equal(idleMutations, 0, `extension is idle when nothing changes (saw ${idleMutations} mutations)`);
+    const idle = await evaluate('(() => { window.__stopCounting(); return { count: window.__mutations, log: window.__mutationLog }; })()');
+    assert.equal(idle.count, 0, `extension is idle when nothing changes (saw ${idle.count}: ${idle.log.join('; ')})`);
 
     console.log('e2e: bar injected, rows classified, three lanes filter, keyboard switch, lazy rows handled, idle after settling');
   } catch (error) {
