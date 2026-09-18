@@ -5,3 +5,4 @@ node_modules/
 .env
 web-ext-artifacts/
 signed/
+.DS_Store
