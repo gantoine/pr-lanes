@@ -20,7 +20,8 @@ Works on `github.com` pull requests and issues, in Chrome and Firefox.
   whose review you are actually waiting on. Teams stay, since a team is people.
 - Press `h` to cycle Humans → Bots → All. It is ignored while you are typing in a comment box.
 - **Humans** shows people's comments and reviews. **Bots** shows everything posted by apps, CI, and review
-  bots — including the timeline events they generate. **All** is GitHub's normal view.
+  bots — including the timeline events they generate. **All** is GitHub's normal view. A setting strips
+  timeline events out of the Humans lane too, if you want only what people wrote.
 - A review thread that a bot started but a human replied to stays in the Humans lane — that is a human
   discussion, and it needs the bot comment above it for context.
 - The pull request description and the comment box never disappear, whichever lane is selected, even when
@@ -71,7 +72,7 @@ Or click the gear in the lane switcher.
 | Setting | Default | What it does |
 | --- | --- | --- |
 | Default lane | Humans | Lane a conversation opens in |
-| Show timeline events | on | Labels, commits, reviews and merges appear next to comments. Each event follows its own author's lane |
+| Hide timeline events in the Humans lane | off | Labels, commits, reviews and merges drop out of the Humans lane, leaving only what people wrote. They still show in Bots and All |
 | Remember the lane per pull request | off | Keep a per-PR choice instead of one global lane |
 | Extra bot accounts | — | Logins that post through a token and look human |
 | Always treat as human | — | Overrides every bot signal |

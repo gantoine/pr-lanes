@@ -4,7 +4,7 @@
   const DEFAULTS = {
     defaultLane: 'human',
     rememberPerPr: false,
-    showActivity: true,
+    hideActivityInHumanLane: false,
     extraBots: '',
     forceHumans: '',
     heuristics: true

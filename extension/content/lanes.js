@@ -47,7 +47,7 @@
   }
 
   function activityVisible() {
-    return lane === 'all' || settings.showActivity;
+    return lane !== 'human' || !settings.hideActivityInHumanLane;
   }
 
   function collectTargets() {

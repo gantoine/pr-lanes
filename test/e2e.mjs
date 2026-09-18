@@ -258,13 +258,23 @@ if (process.argv.includes('--serve')) {
       await evaluate(`globalThis.prLanesStorage.sync.set(${JSON.stringify(values)})`);
     };
 
-    await settings({ showActivity: false });
+    await settings({ hideActivityInHumanLane: true });
     const noEvents = await waitFor(async () => {
       const state = await evaluate(SNAPSHOT);
       return state.rows['human-event'].visible === false ? state : null;
-    }, 5000, 'timeline events to hide when "show timeline events" is off');
+    }, 5000, 'timeline events to hide in the Humans lane');
     assert.equal(noEvents.rows['pr-body'].visible, true, 'comments stay when events are hidden');
-    await settings({ showActivity: true });
+
+    await clickLane('bot');
+    const eventsInBots = await waitFor(async () => {
+      const state = await evaluate(SNAPSHOT);
+      return state.active === 'bot' ? state : null;
+    }, 5000, 'the Bots lane');
+    assert.equal(eventsInBots.rows['bot-event'].visible, true, 'bot events still show in the Bots lane');
+    await clickLane('human');
+    await lanesAfter('human', 'back to the Humans lane');
+
+    await settings({ hideActivityInHumanLane: false });
     await waitFor(async () => (await evaluate(SNAPSHOT)).rows['human-event'].visible, 5000, 'events to come back');
 
     await settings({ rememberPerPr: true });
