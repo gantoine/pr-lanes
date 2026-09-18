@@ -108,7 +108,7 @@ const SNAPSHOT = `(() => {
     rows,
     active: bar.querySelector('.prlanes-tab--active').dataset.lane,
     humanCount: bar.querySelector('[data-count="human"]').textContent,
-    botCount: bar.querySelector('[data-count="bot"]').textContent,
+    botCount: bar.querySelector('[data-count="bot"]') ? bar.querySelector('[data-count="bot"]').textContent : null,
     gearIcon: Boolean(bar.querySelector('.prlanes-settings .prlanes-gear')),
     barText: bar.textContent.trim(),
     barBeforeTimeline: bar.nextElementSibling === document.querySelector('.js-discussion'),
@@ -177,11 +177,11 @@ if (process.argv.includes('--serve')) {
     assert.deepEqual(humans.rows['ai-review'], { actor: 'bot', form: 'comment', pinned: false, visible: false });
     assert.deepEqual(humans.rows['human-event-with-bot'], { actor: 'human', form: 'event', pinned: false, visible: true });
 
-    assert.equal(humans.humanCount, '5');
-    assert.equal(humans.botCount, '6');
+    assert.equal(humans.humanCount, '3', 'the count is comments, not timeline events');
+    assert.equal(humans.botCount, null, 'the bots tab carries no count');
     assert.equal(humans.gearIcon, true, 'settings is a gear icon');
     assert.doesNotMatch(humans.barText, /hidden/i, 'the bar carries no hidden-count text');
-    assert.equal(humans.barText, 'LanesHumans5Bots6All');
+    assert.equal(humans.barText, 'LanesHumans3BotsAll');
 
     await evaluate('document.querySelector(".prlanes-tab[data-lane=\\"bot\\"]").click()');
     const bots = await waitFor(async () => {
@@ -221,7 +221,7 @@ if (process.argv.includes('--serve')) {
     }, 5000, 'lazily loaded bot comment to be classified');
 
     assert.equal(late.rows['late-bot'].visible, false, 'lazily loaded bot comment hidden in Humans lane');
-    assert.equal(late.botCount, '7', 'counts include lazily loaded rows');
+    assert.equal(late.humanCount, '3', 'a lazily loaded bot comment does not change the human count');
 
     await evaluate(`(() => {
       document.querySelector('[data-role="sticky"]').style.display = 'flex';

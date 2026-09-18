@@ -8,9 +8,11 @@ Works on `github.com` pull requests and issues, in Chrome and Firefox.
 
 ## What it does
 
-- Adds a lane switcher — `Humans (n) | Bots (n) | All` plus a gear for settings — to the pull request tab
-  row, immediately after *Files changed*, so it costs no vertical space. It hops into GitHub's sticky header
-  when you scroll past the tabs, and falls back to its own row above the timeline on pages with neither.
+- Adds a lane switcher — `Humans (n) | Bots | All` plus a gear for settings — to the pull request tab row,
+  immediately after *Files changed*, so it costs no vertical space. It hops into GitHub's sticky header when
+  you scroll past the tabs, and falls back to its own row above the timeline on pages with neither.
+- The number counts loaded human *comments*, not timeline events, so it matches what you would count by
+  eye. The Bots tab carries no number: there are always bot comments.
 - **Humans** shows people's comments and reviews. **Bots** shows everything posted by apps, CI, and review
   bots — including the timeline events they generate. **All** is GitHub's normal view.
 - A review thread that a bot started but a human replied to stays in the Humans lane — that is a human
