@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PR Lanes settings</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <main>
+      <h1>PR Lanes for GitHub</h1>
+      <p class="lede">Two lanes on every pull request and issue: one for people, one for bots.</p>
+
+      <section>
+        <h2>Lanes</h2>
+
+        <label class="field">
+          <span>Default lane</span>
+          <select id="defaultLane">
+            <option value="human">Humans</option>
+            <option value="bot">Bots</option>
+            <option value="all">All</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span>Timeline events from people (labels, commits, reviews, merges)</span>
+          <select id="activityLane">
+            <option value="both">Show in both lanes</option>
+            <option value="human">Only in the Humans lane</option>
+            <option value="bot">Only in the Bots lane</option>
+            <option value="none">Only in All</option>
+          </select>
+          <span class="hint">Events from bots always follow the Bots lane.</span>
+        </label>
+
+        <label class="check">
+          <input type="checkbox" id="rememberPerPr" />
+          <span>Remember the lane per pull request instead of globally</span>
+        </label>
+
+        <label class="check">
+          <input type="checkbox" id="pinPrBody" />
+          <span>Always show the first comment, even when a bot opened the pull request</span>
+        </label>
+
+        <label class="check">
+          <input type="checkbox" id="showBar" />
+          <span>Show the lane switcher (keyboard: Alt+1, Alt+2, Alt+3, Alt+L)</span>
+        </label>
+      </section>
+
+      <section>
+        <h2>Who counts as a bot</h2>
+        <p class="hint">
+          GitHub Apps (<code>name[bot]</code>) are detected automatically. Add accounts that post through a
+          token and look human, one login per line.
+        </p>
+
+        <label class="field">
+          <span>Extra bot accounts</span>
+          <textarea id="extraBots" rows="6" spellcheck="false" placeholder="posthog-bot&#10;my-release-runner"></textarea>
+        </label>
+
+        <label class="field">
+          <span>Always treat as human</span>
+          <textarea id="forceHumans" rows="4" spellcheck="false" placeholder="robot-enthusiast"></textarea>
+        </label>
+
+        <label class="check">
+          <input type="checkbox" id="heuristics" />
+          <span>Also treat logins ending in <code>-bot</code>, <code>-ci</code>, <code>-app</code> as bots</span>
+        </label>
+      </section>
+
+      <div class="actions">
+        <button type="button" id="save">Save</button>
+        <button type="button" id="reset" class="secondary">Reset to defaults</button>
+        <span id="status" role="status"></span>
+      </div>
+
+      <details>
+        <summary>Bots detected out of the box</summary>
+        <p id="defaults" class="hint"></p>
+      </details>
+    </main>
+    <script src="../content/classify.js"></script>
+    <script src="options.js"></script>
+  </body>
+</html>

@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>PR Lanes fixture</title>
+    <link rel="stylesheet" href="../extension/content/lanes.css" />
+    <style>
+      body { font: 14px/1.5 -apple-system, system-ui, sans-serif; margin: 24px auto; max-width: 820px; }
+      .TimelineItem { border: 1px solid #d1d9e0; border-radius: 6px; padding: 10px 12px; margin-bottom: 8px; }
+      .timeline-comment-header { display: flex; gap: 8px; align-items: center; font-weight: 600; }
+      .Label { font-size: 11px; font-weight: 600; border: 1px solid #d1d9e0; border-radius: 20px; padding: 0 6px; }
+      .comment-body { margin-top: 6px; font-weight: 400; }
+      #report { margin-top: 24px; font-family: ui-monospace, monospace; font-size: 13px; white-space: pre-wrap; }
+      .fail { color: #cf222e; font-weight: 700; }
+      .pass { color: #1a7f37; }
+    </style>
+  </head>
+  <body>
+    <h1>PR Lanes fixture</h1>
+    <p>Open this file in a browser to check row classification and the lane CSS without installing the extension.</p>
+
+    <div class="prlanes-bar">
+      <span class="prlanes-brand">Lanes</span>
+      <div class="prlanes-tabs">
+        <button type="button" class="prlanes-tab" data-lane="human"><span class="prlanes-dot prlanes-dot--human"></span>Humans</button>
+        <button type="button" class="prlanes-tab" data-lane="bot"><span class="prlanes-dot prlanes-dot--bot"></span>Bots</button>
+        <button type="button" class="prlanes-tab" data-lane="all">All</button>
+      </div>
+    </div>
+
+    <div class="js-discussion">
+      <div class="js-timeline-item" data-expect="human" data-label="PR body by a human">
+        <div class="TimelineItem">
+          <div class="timeline-comment js-comment-container">
+            <div class="timeline-comment-header">
+              <img class="avatar" src="https://avatars.githubusercontent.com/u/1?v=4" alt="georges-antoine" />
+              <a class="author" href="/georges-antoine">georges-antoine</a>
+            </div>
+            <div class="comment-body">This splits the ingestion path in two.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="js-timeline-item" data-expect="bot" data-label="GitHub App comment">
+        <div class="TimelineItem">
+          <div class="timeline-comment js-comment-container">
+            <div class="timeline-comment-header">
+              <img class="avatar" src="https://avatars.githubusercontent.com/in/15368?v=4" alt="github-actions[bot]" />
+              <a class="author" href="/apps/github-actions">github-actions</a>
+              <span class="Label">bot</span>
+            </div>
+            <div class="comment-body">All checks have passed.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="js-timeline-item" data-expect="bot" data-label="Token bot that looks human">
+        <div class="TimelineItem">
+          <div class="timeline-comment js-comment-container">
+            <div class="timeline-comment-header">
+              <img class="avatar" src="https://avatars.githubusercontent.com/u/22?v=4" alt="codecov-commenter" />
+              <a class="author" href="/codecov-commenter">codecov-commenter</a>
+            </div>
+            <div class="comment-body">Patch coverage is 91.2%.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="js-timeline-item" data-expect="human" data-label="Bot review thread with a human reply">
+        <div class="TimelineItem">
+          <div class="js-resolvable-timeline-thread-container">
+            <div class="timeline-comment js-comment-container review-comment">
+              <div class="timeline-comment-header">
+                <img class="avatar" src="https://avatars.githubusercontent.com/in/9988?v=4" alt="coderabbitai[bot]" />
+                <a class="author" href="/apps/coderabbitai">coderabbitai</a>
+                <span class="Label">bot</span>
+              </div>
+              <div class="comment-body">Consider extracting this branch.</div>
+            </div>
+            <div class="timeline-comment js-comment-container review-comment">
+              <div class="timeline-comment-header">
+                <img class="avatar" src="https://avatars.githubusercontent.com/u/3?v=4" alt="marius" />
+                <a class="author" href="/marius">marius</a>
+              </div>
+              <div class="comment-body">Disagree, the branch is load bearing.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="js-timeline-item" data-expect="activity" data-label="Label event">
+        <div class="TimelineItem TimelineItem--condensed">
+          <a class="author" href="/georges-antoine">georges-antoine</a> added the
+          <span class="Label">bug</span> label
+        </div>
+      </div>
+
+      <div class="js-timeline-item" data-expect="activity" data-pin="1" data-label="New comment form">
+        <div class="TimelineItem">
+          <form>
+            <textarea placeholder="Leave a comment"></textarea>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div id="report"></div>
+
+    <script src="../extension/content/classify.js"></script>
+    <script>
+      (function () {
+        const lanes = globalThis.PRLanes;
+        const rules = lanes.buildRules({});
+        const root = document.querySelector('.js-discussion');
+        const lines = [];
+        let failures = 0;
+        let pinnedFirst = false;
+
+        for (const row of root.children) {
+          const kind = lanes.classifyRow(row, rules);
+          row.dataset.prlanesKind = kind;
+          if (lanes.isPinned(row)) row.dataset.prlanesPin = '1';
+          if (!pinnedFirst && (kind === 'human' || kind === 'bot')) {
+            row.dataset.prlanesPin = '1';
+            pinnedFirst = true;
+          }
+
+          const expectedKind = row.dataset.expect;
+          const ok = kind === expectedKind && (row.dataset.pin !== '1' || row.dataset.prlanesPin === '1');
+          if (!ok) failures += 1;
+          lines.push(`${ok ? 'pass' : 'FAIL'}  ${row.dataset.label}: expected ${expectedKind}, got ${kind}`);
+        }
+
+        const report = document.getElementById('report');
+        report.className = failures ? 'fail' : 'pass';
+        report.textContent = `${failures ? failures + ' failing' : 'all rows classified as expected'}\n\n` + lines.join('\n');
+
+        function setLane(lane) {
+          root.dataset.prlanesLane = lane;
+          root.dataset.prlanesActivity = 'show';
+          for (const tab of document.querySelectorAll('.prlanes-tab')) {
+            tab.classList.toggle('prlanes-tab--active', tab.dataset.lane === lane);
+          }
+        }
+
+        document.querySelector('.prlanes-tabs').addEventListener('click', (event) => {
+          const tab = event.target.closest('.prlanes-tab');
+          if (tab) setLane(tab.dataset.lane);
+        });
+
+        function visibleRows() {
+          return Array.from(root.children).filter((row) => getComputedStyle(row).display !== 'none').length;
+        }
+
+        setLane('human');
+        const humanVisible = visibleRows();
+        setLane('bot');
+        const botVisible = visibleRows();
+        setLane('all');
+        const allVisible = visibleRows();
+        setLane('human');
+
+        const cssOk = humanVisible === 4 && botVisible === 5 && allVisible === 6;
+        if (!cssOk) report.className = 'fail';
+        report.textContent += `\n\n${cssOk ? 'pass' : 'FAIL'}  visible rows - humans ${humanVisible}/4, bots ${botVisible}/5 (pinned PR body included), all ${allVisible}/6`;
+      })();
+    </script>
+  </body>
+</html>

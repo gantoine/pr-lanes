@@ -1,0 +1,149 @@
+:root {
+  color-scheme: light dark;
+  --fg: #1f2328;
+  --fg-muted: #59636e;
+  --bg: #ffffff;
+  --bg-muted: #f6f8fa;
+  --border: #d1d9e0;
+  --accent: #0969da;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fg: #e6edf3;
+    --fg-muted: #9198a1;
+    --bg: #0d1117;
+    --bg-muted: #151b23;
+    --border: #3d444d;
+    --accent: #4493f8;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 32px 16px 64px;
+  background: var(--bg);
+  color: var(--fg);
+  font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+}
+
+main {
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+h1 {
+  margin: 0 0 4px;
+  font-size: 22px;
+}
+
+.lede {
+  margin: 0 0 24px;
+  color: var(--fg-muted);
+}
+
+section {
+  margin-bottom: 24px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-muted);
+}
+
+h2 {
+  margin: 0 0 12px;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fg-muted);
+}
+
+.field {
+  display: block;
+  margin-bottom: 14px;
+}
+
+.field > span {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+select,
+textarea {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+}
+
+textarea {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  font-size: 13px;
+  resize: vertical;
+}
+
+.check {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+
+.check input {
+  margin-top: 3px;
+}
+
+.hint {
+  margin: 0 0 12px;
+  color: var(--fg-muted);
+}
+
+code {
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: rgba(129, 139, 152, 0.2);
+  font-size: 12px;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+button {
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--accent);
+  color: #ffffff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button.secondary {
+  background: var(--bg-muted);
+  color: var(--fg);
+}
+
+#status {
+  color: var(--fg-muted);
+}
+
+details {
+  margin-top: 24px;
+  color: var(--fg-muted);
+}
+
+summary {
+  cursor: pointer;
+}
