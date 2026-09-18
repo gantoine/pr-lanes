@@ -7,9 +7,7 @@
     showActivity: true,
     extraBots: '',
     forceHumans: '',
-    heuristics: true,
-    pinPrBody: true,
-    showBar: true
+    heuristics: true
   };
 
   const CLASSIFICATION_KEYS = ['extraBots', 'forceHumans', 'heuristics'];

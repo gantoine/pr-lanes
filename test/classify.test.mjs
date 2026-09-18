@@ -74,10 +74,8 @@ test('the settings schema is exported for both the content script and the option
     'extraBots',
     'forceHumans',
     'heuristics',
-    'pinPrBody',
     'rememberPerPr',
-    'showActivity',
-    'showBar'
+    'showActivity'
   ]);
   assert.ok(lanes.CLASSIFICATION_KEYS.every((key) => key in lanes.DEFAULTS));
 });

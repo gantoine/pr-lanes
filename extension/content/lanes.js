@@ -7,7 +7,6 @@
 
   const LANES = ['human', 'bot', 'all'];
   const DEFAULTS = lanes.DEFAULTS;
-  const REVISION_KEYS = lanes.CLASSIFICATION_KEYS.concat('pinPrBody');
 
   const sync = api.storage.sync || api.storage.local;
   const local = api.storage.local || api.storage.sync;
@@ -87,7 +86,7 @@
         setData(row, 'prlanesActor', kind.actor);
         setData(row, 'prlanesForm', kind.form);
         setData(row, 'prlanesRev', revision);
-        if (settings.pinPrBody && lanes.isPrBody(row)) setData(row, 'prlanesPin', '1');
+        if (lanes.isPrBody(row)) setData(row, 'prlanesPin', '1');
         else delete row.dataset.prlanesPin;
       }
 
@@ -168,16 +167,12 @@
     if (placeHandle || !lastTarget) return;
     placeHandle = requestAnimationFrame(() => {
       placeHandle = 0;
-      if (lastTarget && lastTarget.root.isConnected) placeBar(lastTarget);
+      if (lastTarget.root.isConnected) placeBar(lastTarget);
     });
   }
 
   function placeBar(target) {
     lastTarget = target;
-    if (!settings.showBar) {
-      if (bar && bar.isConnected) bar.remove();
-      return;
-    }
     if (!bar) bar = buildBar();
 
     const slot = barSlot();
@@ -261,20 +256,6 @@
     rulesRevision += 1;
   }
 
-  function onKeydown(event) {
-    if (!event.altKey || event.ctrlKey || event.metaKey) return;
-    const active = document.activeElement;
-    if (active && (active.isContentEditable || /^(input|textarea|select)$/i.test(active.tagName))) return;
-
-    if (event.code === 'Digit1') setLane('human');
-    else if (event.code === 'Digit2') setLane('bot');
-    else if (event.code === 'Digit3') setLane('all');
-    else if (event.code === 'KeyL') setLane(LANES[(LANES.indexOf(lane) + 1) % LANES.length]);
-    else return;
-
-    event.preventDefault();
-  }
-
   async function loadLane() {
     const key = settings.rememberPerPr ? threadKey() : 'lane';
     const stored = await read(local, { [key]: settings.defaultLane });
@@ -299,7 +280,6 @@
       window.addEventListener(event, queueScan);
     }
 
-    document.addEventListener('keydown', onKeydown, true);
     window.addEventListener('scroll', queuePlace, { passive: true });
 
     if (api.storage.onChanged) {
@@ -315,7 +295,7 @@
 
         read(sync, DEFAULTS).then((next) => {
           settings = Object.assign({}, DEFAULTS, next);
-          if (REVISION_KEYS.some((key) => key in changes)) invalidateRules();
+          if (lanes.CLASSIFICATION_KEYS.some((key) => key in changes)) invalidateRules();
           scan();
         });
       });

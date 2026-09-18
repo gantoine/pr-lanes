@@ -19,9 +19,9 @@ Works on `github.com` pull requests and issues, in Chrome and Firefox.
   bots — including the timeline events they generate. **All** is GitHub's normal view.
 - A review thread that a bot started but a human replied to stays in the Humans lane — that is a human
   discussion, and it needs the bot comment above it for context.
-- The pull request description and the comment box never disappear, whichever lane is selected.
+- The pull request description and the comment box never disappear, whichever lane is selected, even when
+  a bot opened the pull request.
 - The same filter applies to inline review threads on the **Files changed** tab.
-- Keyboard: `Alt+1` Humans, `Alt+2` Bots, `Alt+3` All, `Alt+L` cycles.
 
 ## Install
 
@@ -50,8 +50,6 @@ Or click the gear in the lane switcher.
 | Default lane | Humans | Lane a conversation opens in |
 | Show timeline events | on | Labels, commits, reviews and merges appear next to comments. Each event follows its own author's lane |
 | Remember the lane per pull request | off | Keep a per-PR choice instead of one global lane |
-| Always show the pull request description | on | Keeps the description visible even when a bot opened the PR |
-| Show the lane switcher | on | Turn the bar off and drive it from the keyboard |
 | Extra bot accounts | — | Logins that post through a token and look human |
 | Always treat as human | — | Overrides every bot signal |
 | Name heuristics | on | Treat `*[bot]`, `*-bot`, `*-ci`, `*-app` logins as bots |

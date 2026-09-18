@@ -209,11 +209,11 @@ if (process.argv.includes('--serve')) {
     assert.equal(bots.rows['reviewer-human'].visible, false, 'human reviewers hide in the Bots lane');
     assert.equal(bots.rows['ai-review'].visible, true, 'AI-badged review visible in Bots lane');
 
-    await evaluate("document.dispatchEvent(new KeyboardEvent('keydown', { key: '3', code: 'Digit3', altKey: true, bubbles: true }))");
+    await clickLane('all');
     const all = await waitFor(async () => {
       const state = await evaluate(SNAPSHOT);
       return state.active === 'all' ? state : null;
-    }, 5000, 'Alt+3 switch to All');
+    }, 5000, 'switch to All');
 
     assert.ok(Object.values(all.rows).every((row) => row.visible), 'every row visible in All');
 
@@ -247,42 +247,6 @@ if (process.argv.includes('--serve')) {
     assert.equal(noEvents.rows['pr-body'].visible, true, 'comments stay when events are hidden');
     await settings({ showActivity: true });
     await waitFor(async () => (await evaluate(SNAPSHOT)).rows['human-event'].visible, 5000, 'events to come back');
-
-    await settings({ pinPrBody: false });
-    const unpinned = await waitFor(async () => {
-      const state = await evaluate(SNAPSHOT);
-      return state.rows['pr-body'].pinned === false ? state : null;
-    }, 5000, 'the description to stop being pinned');
-    await clickLane('bot');
-    const unpinnedInBots = await waitFor(async () => {
-      const state = await evaluate(SNAPSHOT);
-      return state.active === 'bot' ? state : null;
-    }, 5000, 'the Bots lane');
-    assert.equal(unpinnedInBots.rows['pr-body'].visible, false, 'an unpinned description hides in the Bots lane');
-    assert.equal(unpinned.rows['pr-body'].pinned, false);
-    await settings({ pinPrBody: true });
-    await clickLane('human');
-    await waitFor(async () => (await evaluate(SNAPSHOT)).rows['pr-body'].pinned, 5000, 'the description to be pinned again');
-
-    await settings({ showBar: false });
-    await waitFor(async () => {
-      const state = await evaluate(SNAPSHOT);
-      return state.hasBar === false ? state : null;
-    }, 5000, 'the switcher to disappear when turned off');
-    await evaluate("document.dispatchEvent(new KeyboardEvent('keydown', { key: '2', code: 'Digit2', altKey: true, bubbles: true }))");
-    const keyboardOnly = await waitFor(async () => {
-      const state = await evaluate(SNAPSHOT);
-      return state.rows['bot-comment'].visible ? state : null;
-    }, 5000, 'Alt+2 to still switch lanes with the switcher hidden');
-    assert.equal(keyboardOnly.hasBar, false);
-    await settings({ showBar: true });
-    const barBack = await waitFor(async () => {
-      const state = await evaluate(SNAPSHOT);
-      return state.hasBar ? state : null;
-    }, 5000, 'the switcher to come back');
-    assert.equal(barBack.active, 'bot', 'the keyboard switch survived the switcher being hidden');
-    await clickLane('human');
-    await waitFor(async () => (await evaluate(SNAPSHOT)).active === 'human', 5000, 'back to the Humans lane');
 
     await settings({ rememberPerPr: true });
     await clickLane('all');
@@ -369,7 +333,7 @@ if (process.argv.includes('--serve')) {
     const idle = await evaluate('(() => { window.__stopCounting(); return { count: window.__mutations, log: window.__mutationLog }; })()');
     assert.equal(idle.count, 0, `extension is idle when nothing changes (saw ${idle.count}: ${idle.log.join('; ')})`);
 
-    console.log('e2e: bar injected, rows classified, three lanes filter, keyboard switch, lazy rows handled, idle after settling');
+    console.log('e2e: bar injected, rows classified, three lanes filter, sidebar filtered, lazy rows handled, settings applied, idle after settling');
   } catch (error) {
     failure = error;
   } finally {
