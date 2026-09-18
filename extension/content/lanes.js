@@ -5,6 +5,9 @@
   const lanes = globalThis.PRLanes;
   if (!api || !lanes) return;
 
+  if (document.documentElement.dataset.prlanesRunning) return;
+  document.documentElement.dataset.prlanesRunning = '1';
+
   const LANES = ['human', 'bot', 'all'];
   const DEFAULTS = lanes.DEFAULTS;
 
@@ -29,6 +32,7 @@
   const TAB_NAV_SELECTOR = 'nav[class*="TabNav"], nav.tabnav-tabs, .tabnav-tabs';
   const AVATAR_RAIL_SELECTOR = '.TimelineItem-avatar, .timeline-comment-avatar';
   const RAIL_GAP = 12;
+  const RAIL_CLEARANCE = 44;
 
   const read = (area, defaults) => Promise.resolve().then(() => area.get(defaults)).catch(() => defaults);
   const write = (area, values) => Promise.resolve().then(() => area.set(values)).catch(() => {});
@@ -48,6 +52,10 @@
 
   function activityVisible() {
     return lane !== 'human' || !settings.hideActivityInHumanLane;
+  }
+
+  function resolvedVisible() {
+    return lane === 'all' || !settings.hideResolvedThreads;
   }
 
   function collectTargets() {
@@ -97,8 +105,14 @@
       if (counted && counts[actor] !== undefined) counts[actor] += 1;
     }
 
+    for (const thread of lanes.resolvableThreads(target.root)) {
+      if (lanes.isResolved(thread)) setData(thread, 'prlanesResolved', '1');
+      else delete thread.dataset.prlanesResolved;
+    }
+
     setData(target.root, 'prlanesLane', lane);
     setData(target.root, 'prlanesActivity', activityVisible() ? 'show' : 'hide');
+    setData(target.root, 'prlanesThreads', resolvedVisible() ? 'show' : 'hide');
 
     return counts;
   }
@@ -183,9 +197,23 @@
     });
   }
 
+  function gutterBottom(avatar) {
+    let bottom = avatar.offsetTop + avatar.offsetHeight;
+
+    for (const sibling of avatar.parentElement.children) {
+      if (sibling === bar || sibling === avatar) continue;
+      if (sibling.offsetTop < avatar.offsetTop) continue;
+      if (getComputedStyle(sibling).position !== 'absolute') continue;
+      bottom = Math.max(bottom, sibling.offsetTop + sibling.offsetHeight);
+    }
+
+    return bottom;
+  }
+
   function alignRail(avatar) {
     const left = getComputedStyle(avatar).left;
-    const top = `${avatar.offsetTop + avatar.offsetHeight + RAIL_GAP}px`;
+    const clearance = avatar.offsetTop + avatar.offsetHeight + RAIL_CLEARANCE;
+    const top = `${Math.max(gutterBottom(avatar) + RAIL_GAP, clearance)}px`;
     if (bar.style.left !== left) bar.style.left = left;
     if (bar.style.top !== top) bar.style.top = top;
   }

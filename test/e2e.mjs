@@ -104,10 +104,12 @@ const SNAPSHOT = `(() => {
     };
   }
   const bar = document.querySelector('.prlanes-bar');
-  if (!bar) return { rows, hasBar: false };
+  const barCount = document.querySelectorAll('.prlanes-bar').length;
+  if (!bar) return { rows, hasBar: false, barCount };
   return {
     rows,
     hasBar: true,
+    barCount,
     active: bar.querySelector('.prlanes-tab--active').dataset.lane,
     humanDotOn: bar.querySelector('[data-lane="human"]').classList.contains('prlanes-tab--lit'),
     botDotOn: bar.querySelector('[data-lane="bot"]').classList.contains('prlanes-tab--lit'),
@@ -258,6 +260,25 @@ if (process.argv.includes('--serve')) {
       await evaluate(`globalThis.prLanesStorage.sync.set(${JSON.stringify(values)})`);
     };
 
+    await clickLane('bot');
+    await lanesAfter('bot', 'the Bots lane');
+    await settings({ hideResolvedThreads: true });
+    const noResolved = await waitFor(async () => {
+      const state = await evaluate(SNAPSHOT);
+      return state.rows['resolved-thread'].visible === false ? state : null;
+    }, 5000, 'resolved threads to hide');
+    assert.equal(noResolved.rows['resolved-thread-review'].visible, true, 'the review around it stays');
+
+    await clickLane('all');
+    const resolvedInAll = await waitFor(async () => {
+      const state = await evaluate(SNAPSHOT);
+      return state.active === 'all' ? state : null;
+    }, 5000, 'the All lane');
+    assert.equal(resolvedInAll.rows['resolved-thread'].visible, true, 'the All lane keeps resolved threads');
+    await settings({ hideResolvedThreads: false });
+    await clickLane('human');
+    await lanesAfter('human', 'back to the Humans lane');
+
     await settings({ hideActivityInHumanLane: true });
     const noEvents = await waitFor(async () => {
       const state = await evaluate(SNAPSHOT);
@@ -355,6 +376,16 @@ if (process.argv.includes('--serve')) {
     assert.equal(noHumans.botDotOn, true, 'the bot dot stays lit');
     assert.equal(noHumans.rows['pr-body'].visible, true, 'the description is still there');
     assert.equal(noHumans.rows['pr-body'].actor, 'human', 'the description alone does not light the human dot');
+
+    await evaluate(`new Promise((resolve) => {
+      const script = document.createElement('script');
+      script.src = '/extension/content/lanes.js';
+      script.addEventListener('load', resolve);
+      document.body.appendChild(script);
+    })`);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const reinjected = await evaluate(SNAPSHOT);
+    assert.equal(reinjected.barCount, 1, 'a second copy of the content script does not add a second switcher');
 
     await evaluate(`(() => {
       window.__mutations = 0;

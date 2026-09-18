@@ -5,6 +5,7 @@
     defaultLane: 'human',
     rememberPerPr: false,
     hideActivityInHumanLane: false,
+    hideResolvedThreads: false,
     extraBots: '',
     forceHumans: '',
     heuristics: true
@@ -114,6 +115,8 @@
   ].join(',');
 
   const FILES_ROOT_SELECTOR = '#files, [data-testid="diff-view"], .js-diff-progressive-container';
+
+  const RESOLVABLE_THREAD_SELECTOR = '.js-resolvable-timeline-thread-container[data-resolved], review-thread-collapsible[data-resolved], [data-testid="review-thread"][data-resolved]';
 
   const SIDEBAR_SECTION_SELECTOR = '.js-issue-sidebar-form, [data-testid*="reviewers"], [data-testid="sidebar-reviewers-section"]';
 
@@ -254,6 +257,14 @@
     return { actor: classifyAuthor(author, rules), form: 'event' };
   }
 
+  function resolvableThreads(root) {
+    return Array.from(root.querySelectorAll(RESOLVABLE_THREAD_SELECTOR));
+  }
+
+  function isResolved(thread) {
+    return thread.getAttribute('data-resolved') === 'true';
+  }
+
   function findReviewersRoot(scope) {
     for (const section of (scope || document).querySelectorAll(SIDEBAR_SECTION_SELECTOR)) {
       const heading = section.querySelector('h3, summary, [class*="Heading"], [class*="heading"]');
@@ -370,10 +381,12 @@
     classifyRow,
     findFilesRoot,
     findReviewersRoot,
+    isResolved,
     findTimelineRoot,
     isPrBody,
     normalizeLogin,
     parseLoginList,
+    resolvableThreads,
     reviewerRows,
     threadRows,
     timelineRows

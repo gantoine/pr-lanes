@@ -179,7 +179,8 @@
 
 [data-prlanes-lane="human"] [data-prlanes-actor="bot"]:not([data-prlanes-pin="1"]),
 [data-prlanes-lane="bot"] [data-prlanes-actor="human"]:not([data-prlanes-pin="1"]),
-[data-prlanes-activity="hide"] [data-prlanes-form="event"]:not([data-prlanes-pin="1"]) {
+[data-prlanes-activity="hide"] [data-prlanes-form="event"]:not([data-prlanes-pin="1"]),
+[data-prlanes-threads="hide"] [data-prlanes-resolved="1"] {
   display: none !important;
 }
 

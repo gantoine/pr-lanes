@@ -73,6 +73,7 @@ Or click the gear in the lane switcher.
 | --- | --- | --- |
 | Default lane | Humans | Lane a conversation opens in |
 | Hide timeline events in the Humans lane | off | Labels, commits, reviews and merges drop out of the Humans lane, leaving only what people wrote. They still show in Bots and All |
+| Hide resolved review threads | off | Threads somebody has already resolved drop out of the Humans and Bots lanes. They stay in All |
 | Remember the lane per pull request | off | Keep a per-PR choice instead of one global lane |
 | Extra bot accounts | — | Logins that post through a token and look human |
 | Always treat as human | — | Overrides every bot signal |
