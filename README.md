@@ -41,6 +41,25 @@ for a signed install through addons.mozilla.org.
 The extension is entirely local: one `storage` permission for settings, no network calls, no background
 worker.
 
+### Sharing it with other people
+
+**Firefox** signs add-ons for self-distribution, with no public listing:
+
+1. Create an API key pair at [addons.mozilla.org](https://addons.mozilla.org/developers/addon/api/key/).
+2. `cp .env.example .env` and paste the values in. `.env` is gitignored; the secret is passed to `web-ext`
+   through the environment, never on a command line.
+3. `npm run sign:firefox` — or `npm run sign:firefox -- --dry-run` first, which prints the command and the
+   credentials it found without submitting anything.
+
+The signed `.xpi` lands in `signed/`. Host it anywhere and open the link in Firefox to install it. Bump
+`version` in `extension/manifest.json` before each run: addons.mozilla.org rejects a version it has already
+signed, and the script stops early rather than let you find that out from a failed upload.
+
+**Chrome** has no equivalent. It refuses `.crx` installs from outside the Web Store unless enterprise policy
+allows the extension ID, so the choices are handing people `dist/chrome.zip` to unzip and *Load unpacked*
+(developer mode, manual updates), or an unlisted Web Store listing — link-only, not searchable, and it
+auto-updates.
+
 ## Settings
 
 Chrome: `chrome://extensions` → *Details* → *Extension options*. Firefox: `about:addons` → *Preferences*.
@@ -100,6 +119,7 @@ npm run test:unit
 npm run test:e2e    # needs Chrome; override with CHROME=/path/to/chrome
 npm run test:serve  # serves the real content scripts against test/e2e-page.html to eyeball in a browser
 node build.mjs
+npm run sign:firefox -- --dry-run
 ```
 
 `test/e2e.mjs` loads `content/classify.js` and `content/lanes.js` into a page with a stubbed extension API

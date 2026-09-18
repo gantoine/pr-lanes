@@ -9,6 +9,7 @@
     "test": "npm run test:unit && npm run test:e2e",
     "test:unit": "node --test test/classify.test.mjs",
     "test:e2e": "node test/e2e.mjs",
-    "test:serve": "node test/e2e.mjs --serve"
+    "test:serve": "node test/e2e.mjs --serve",
+    "sign:firefox": "node sign.mjs"
   }
 }
