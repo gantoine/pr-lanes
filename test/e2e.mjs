@@ -112,7 +112,8 @@ const SNAPSHOT = `(() => {
     gearIcon: Boolean(bar.querySelector('.prlanes-settings .prlanes-gear')),
     barText: bar.textContent.trim(),
     barBeforeTimeline: bar.nextElementSibling === document.querySelector('.js-discussion'),
-    inHeader: bar.classList.contains('prlanes-bar--header') && /TitleArea/.test(bar.parentElement.className)
+    slot: bar.classList.contains('prlanes-bar--tabs') ? 'tabs' : (bar.classList.contains('prlanes-bar--header') ? 'header' : 'timeline'),
+    slotParent: String(bar.parentElement.className)
   };
 })()`;
 
@@ -160,7 +161,8 @@ if (process.argv.includes('--serve')) {
     const humans = await evaluate(SNAPSHOT);
 
     assert.equal(humans.active, 'human', 'default lane is Humans');
-    assert.equal(humans.inHeader, true, 'lane bar sits inside the pull request header');
+    assert.equal(humans.slot, 'tabs', 'lane bar sits in the tab row at rest');
+    assert.match(humans.slotParent, /TabNavList/, 'lane bar sits next to the tabs themselves');
 
     assert.deepEqual(humans.rows['pr-body'], { actor: 'human', form: 'comment', pinned: true, visible: true });
     assert.deepEqual(humans.rows['bot-comment'], { actor: 'bot', form: 'comment', pinned: false, visible: false });
@@ -221,12 +223,32 @@ if (process.argv.includes('--serve')) {
     assert.equal(late.rows['late-bot'].visible, false, 'lazily loaded bot comment hidden in Humans lane');
     assert.equal(late.botCount, '7', 'counts include lazily loaded rows');
 
+    await evaluate(`(() => {
+      document.querySelector('[data-role="sticky"]').style.display = 'flex';
+      window.dispatchEvent(new Event('scroll'));
+    })()`);
+    const sticky = await waitFor(async () => {
+      const state = await evaluate(SNAPSHOT);
+      return state.slot === 'header' ? state : null;
+    }, 5000, 'lane bar to follow the sticky header');
+    assert.match(sticky.slotParent, /TitleArea/, 'lane bar rides the sticky header title row');
+
+    await evaluate(`(() => {
+      document.querySelector('[data-role="sticky"]').style.display = 'none';
+      window.dispatchEvent(new Event('scroll'));
+    })()`);
+    const unstuck = await waitFor(async () => {
+      const state = await evaluate(SNAPSHOT);
+      return state.slot === 'tabs' ? state : null;
+    }, 5000, 'lane bar to return to the tab row');
+    assert.match(unstuck.slotParent, /TabNavList/);
+
     await evaluate('document.querySelector(\'[data-role="header"]\').remove()');
     const headerless = await waitFor(async () => {
       const state = await evaluate(SNAPSHOT);
       return state.barBeforeTimeline ? state : null;
     }, 5000, 'lane bar to fall back above the timeline when there is no header');
-    assert.equal(headerless.inHeader, false, 'the header styling is dropped with the header');
+    assert.equal(headerless.slot, 'timeline', 'the bar falls back to its own row above the timeline');
 
     await evaluate(`(() => {
       window.__mutations = 0;

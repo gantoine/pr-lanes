@@ -27,6 +27,7 @@
   const STICKY_HEADER_SELECTOR = '[class*="stickyHeader" i], .gh-header-sticky, [data-testid*="sticky-header"]';
   const HEADER_SELECTOR = '[class*="PullRequestHeader"], [class*="PageHeader-PageHeader"], .gh-header-show';
   const HEADER_SLOT_SELECTOR = '[class*="PageHeader-TitleArea"], .gh-header-title';
+  const TAB_NAV_SELECTOR = 'nav[class*="TabNav"], nav.tabnav-tabs, .tabnav-tabs';
 
   const read = (area, defaults) => Promise.resolve().then(() => area.get(defaults)).catch(() => defaults);
   const write = (area, values) => Promise.resolve().then(() => area.set(values)).catch(() => {});
@@ -139,13 +140,22 @@
     return Boolean(element) && element.getBoundingClientRect().height > 0;
   }
 
-  function headerSlot() {
+  function tabStrip() {
+    const nav = document.querySelector(TAB_NAV_SELECTOR);
+    if (!visible(nav)) return null;
+    return nav.firstElementChild || nav;
+  }
+
+  function barSlot() {
     const sticky = document.querySelector(STICKY_HEADER_SELECTOR);
-    if (visible(sticky)) return sticky.querySelector(HEADER_SLOT_SELECTOR) || sticky;
+    if (visible(sticky)) return { element: sticky.querySelector(HEADER_SLOT_SELECTOR) || sticky, variant: 'header' };
+
+    const tabs = tabStrip();
+    if (tabs) return { element: tabs, variant: 'tabs' };
 
     for (const header of document.querySelectorAll(HEADER_SELECTOR)) {
       if (sticky && sticky.contains(header)) continue;
-      if (visible(header)) return header.querySelector(HEADER_SLOT_SELECTOR) || header;
+      if (visible(header)) return { element: header.querySelector(HEADER_SLOT_SELECTOR) || header, variant: 'header' };
     }
 
     return null;
@@ -167,11 +177,12 @@
     }
     if (!bar) bar = buildBar();
 
-    const slot = headerSlot();
-    bar.classList.toggle('prlanes-bar--header', Boolean(slot));
+    const slot = barSlot();
+    bar.classList.toggle('prlanes-bar--header', Boolean(slot) && slot.variant === 'header');
+    bar.classList.toggle('prlanes-bar--tabs', Boolean(slot) && slot.variant === 'tabs');
 
     if (slot) {
-      if (bar.parentElement !== slot) slot.appendChild(bar);
+      if (bar.parentElement !== slot.element) slot.element.appendChild(bar);
       return;
     }
 

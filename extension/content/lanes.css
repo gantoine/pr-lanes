@@ -16,18 +16,28 @@
   line-height: 20px;
 }
 
-.prlanes-bar--header {
+.prlanes-bar--header,
+.prlanes-bar--tabs {
   position: static;
-  order: 99;
-  margin: 0 0 0 auto;
   padding: 0;
   border: 0;
   background: transparent;
+  align-self: center;
   flex-wrap: nowrap;
   gap: 8px;
 }
 
-.prlanes-bar--header .prlanes-brand {
+.prlanes-bar--header {
+  order: 99;
+  margin: 0 0 0 auto;
+}
+
+.prlanes-bar--tabs {
+  margin: 0 0 0 12px;
+}
+
+.prlanes-bar--header .prlanes-brand,
+.prlanes-bar--tabs .prlanes-brand {
   display: none;
 }
 
@@ -114,7 +124,8 @@
   color: var(--fgColor-default, var(--color-fg-default, #1f2328));
 }
 
-.prlanes-bar--header .prlanes-settings {
+.prlanes-bar--header .prlanes-settings,
+.prlanes-bar--tabs .prlanes-settings {
   margin-left: 0;
 }
 
