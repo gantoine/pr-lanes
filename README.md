@@ -45,24 +45,62 @@ for a signed install through addons.mozilla.org.
 The extension is entirely local: one `storage` permission for settings, no network calls, no background
 worker.
 
-### Sharing it with other people
+## Releasing
 
-**Firefox** signs add-ons for self-distribution, with no public listing:
+`git tag v0.3.0 && git push --tags`, or publish a GitHub Release against a new `v0.3.0` tag — either way the
+tag push starts `.github/workflows/release.yml`, which refuses to go further unless the tag matches
+`version` in `extension/manifest.json` and the tests pass. It then submits the Firefox add-on to
+addons.mozilla.org, uploads and publishes the Chrome bundle, and attaches `chrome.zip` and `firefox.zip` to
+the release.
 
-1. Create an API key pair at [addons.mozilla.org](https://addons.mozilla.org/developers/addon/api/key/).
-2. `cp .env.example .env` and paste the values in. `.env` is gitignored; the secret is passed to `web-ext`
-   through the environment, never on a command line.
-3. `npm run sign:firefox` — or `npm run sign:firefox -- --dry-run` first, which prints the command and the
-   credentials it found without submitting anything.
+Firefox and Chrome publish in separate jobs, so a Mozilla outage does not hold up the Chrome release, or the
+other way around.
 
-The signed `.xpi` lands in `signed/`. Host it anywhere and open the link in Firefox to install it. Bump
-`version` in `extension/manifest.json` before each run: addons.mozilla.org rejects a version it has already
+### One-time setup
+
+**Firefox** — create the add-on once on [addons.mozilla.org](https://addons.mozilla.org/developers/) under
+the id `pr-lanes@gantoine.com` (`build.mjs` writes it into the Firefox manifest) and fill in its listing.
+Then create an API key pair at [the API key page](https://addons.mozilla.org/developers/addon/api/key/) and
+store it as the repository secrets `WEB_EXT_API_KEY` and `WEB_EXT_API_SECRET`.
+
+CI signs with `--channel listed --approval-timeout 0`: it uploads and exits rather than waiting out a review
+that can take days. Mozilla emails you when the review finishes, and the listing updates itself — so a green
+`firefox` job means *submitted*, not *live*.
+
+**Chrome** — create the item once in the
+[Web Store dashboard](https://chrome.google.com/webstore/devconsole) by uploading `dist/chrome.zip` by hand
+and completing the store listing. Then, in a Google Cloud project with the Chrome Web Store API enabled,
+make an OAuth client of type *Desktop app* and mint a refresh token for the
+`https://www.googleapis.com/auth/chromewebstore` scope. Store:
+
+| Name | Kind | Where it comes from |
+| --- | --- | --- |
+| `CHROME_EXTENSION_ID` | repository **variable** | the 32-letter id in the Web Store listing URL |
+| `CHROME_CLIENT_ID` | secret | the OAuth client |
+| `CHROME_CLIENT_SECRET` | secret | the OAuth client |
+| `CHROME_REFRESH_TOKEN` | secret | the token exchange |
+
+Publishing sends the upload to review. A green `chrome` job means the Web Store accepted and queued it.
+
+### Running either step by hand
+
+Both scripts read the same names from a gitignored `.env` when they are not already in the environment, so
+`cp .env.example .env` and fill it in to drive a release from your machine. Each takes `--dry-run`, which
+prints what it would send and which credentials it found without submitting anything:
+
+```bash
+npm run sign:firefox -- --channel listed --dry-run
+npm run publish:chrome -- --dry-run
+```
+
+`npm run sign:firefox` with no `--channel` still signs **unlisted**, the self-distribution path: the `.xpi`
+lands in `signed/`, and you host it anywhere and open the link in Firefox. Bump `version` in
+`extension/manifest.json` before each unlisted run — addons.mozilla.org rejects a version it has already
 signed, and the script stops early rather than let you find that out from a failed upload.
 
-**Chrome** has no equivalent. It refuses `.crx` installs from outside the Web Store unless enterprise policy
-allows the extension ID, so the choices are handing people `dist/chrome.zip` to unzip and *Load unpacked*
-(developer mode, manual updates), or an unlisted Web Store listing — link-only, not searchable, and it
-auto-updates.
+Chrome has no self-distribution equivalent. It refuses `.crx` installs from outside the Web Store unless
+enterprise policy allows the extension id, so off-store sharing means handing people `dist/chrome.zip` to
+unzip and *Load unpacked*, with manual updates.
 
 ## Settings
 
@@ -116,6 +154,10 @@ test/
   e2e.mjs                Drives headless Chrome over CDP against the real content scripts
   e2e-page.html          A GitHub timeline in miniature: the markup both the test and --serve run against
   extension-stub.js      Minimal chrome.storage/runtime stand-in so the content scripts run in a plain page
+build.mjs                Writes dist/chrome and dist/firefox and their .zip files
+sign.mjs                 Submits the Firefox bundle to addons.mozilla.org
+publish-chrome.mjs       Uploads and publishes the Chrome bundle to the Web Store
+env.mjs                  Reads .env when the credentials are not already in the environment
 ```
 
 ```bash
@@ -124,7 +166,8 @@ npm run test:unit
 npm run test:e2e    # needs Chrome; override with CHROME=/path/to/chrome
 npm run test:serve  # serves the real content scripts against test/e2e-page.html to eyeball in a browser
 node build.mjs
-npm run sign:firefox -- --dry-run
+npm run sign:firefox -- --channel listed --dry-run
+npm run publish:chrome -- --dry-run
 ```
 
 `test/e2e.mjs` loads `content/classify.js` and `content/lanes.js` into a page with a stubbed extension API
