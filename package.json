@@ -4,7 +4,7 @@
   "private": true,
   "license": "MIT",
   "type": "module",
-  "description": "Chrome and Firefox extension that splits GitHub pull request conversations into human and bot lanes.",
+  "description": "Splits GitHub pull request conversations into human and bot lanes.",
   "scripts": {
     "build": "node build.mjs",
     "test": "npm run test:unit && npm run test:e2e",
