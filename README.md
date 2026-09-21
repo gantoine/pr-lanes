@@ -17,57 +17,10 @@ review threads on the **Files changed** tab, and in the Humans lane bot reviewer
 Nothing useful disappears: the pull request description and the comment box survive every lane, and a
 thread a bot started but a human replied to stays in Humans, bot comment and all.
 
-The lane switcher costs no vertical space. At rest it is a vertical strip of icons in the left gutter
-under the author's avatar; scroll past it and it becomes a horizontal switcher in GitHub's sticky header.
-The Humans and Bots buttons turn green or amber when that lane holds comments and grey when it does not —
-no counts, since comments arrive while you read and a stale number is worse than none.
-
 The extension is entirely local: `storage` for settings and host access to `github.com`, no other
 permission, no network calls, no background worker.
 
-## Releasing
-
-`git tag v0.3.0 && git push --tags`, or publish a GitHub Release against a new tag — either way the tag push
-starts `.github/workflows/release.yml`. Any tag name releases; the tests still have to pass. It submits the
-Firefox add-on to addons.mozilla.org, uploads and publishes the Chrome bundle, and attaches `chrome.zip` and
-`firefox.zip` to the release.
-
-What ships is `version` in `extension/manifest.json`, not the tag — nothing checks that the two agree, so
-bump the manifest before tagging. Both stores reject a version they already hold, which is the backstop if
-you forget.
-
-Firefox and Chrome publish in separate jobs, so a Mozilla outage does not hold up the Chrome release, or the
-other way around.
-
-### Running either step by hand
-
-Both scripts read their credentials from a gitignored `.env` when they are not already in the environment,
-so `cp .env.example .env` and fill it in to drive a release from your machine. Each takes `--dry-run`, which
-prints what it would send and which credentials it found without submitting anything:
-
-```bash
-npm run sign:firefox -- --channel listed --dry-run
-npm run publish:chrome -- --dry-run
-```
-
-The repository declares no dependencies, so signing fetches `web-ext` through `npx` and needs the network
-on its first run.
-
-`npm run sign:firefox` with no `--channel` still signs **unlisted**, the self-distribution path: the `.xpi`
-lands in `signed/`, and you host it anywhere and open the link in Firefox. Bump `version` in
-`extension/manifest.json` before each unlisted run: addons.mozilla.org rejects a version it has already
-signed. The script checks `signed/` for an `.xpi` carrying the current version and stops before uploading
-if it finds one. On a fresh clone, or after `signed/` is cleared, a duplicate version surfaces as a failed
-upload instead.
-
-Chrome has no self-distribution equivalent. It refuses `.crx` installs from outside the Web Store unless
-enterprise policy allows the extension id, so off-store sharing means handing people `dist/chrome.zip` to
-unzip and *Load unpacked*, with manual updates.
-
 ## Settings
-
-Chrome: `chrome://extensions` → *Details* → *Extension options*. Firefox: `about:addons` → *Preferences*.
-Or click the gear in the lane switcher.
 
 | Setting | Default | What it does |
 | --- | --- | --- |
