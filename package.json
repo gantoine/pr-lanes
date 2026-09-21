@@ -11,6 +11,7 @@
     "test:unit": "node --test test/classify.test.mjs",
     "test:e2e": "node test/e2e.mjs",
     "test:serve": "node test/e2e.mjs --serve",
-    "sign:firefox": "node sign.mjs"
+    "sign:firefox": "node sign.mjs",
+    "publish:chrome": "node publish-chrome.mjs"
   }
 }
