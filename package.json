@@ -2,6 +2,7 @@
   "name": "pr-lanes",
   "version": "0.2.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "description": "Chrome and Firefox extension that splits GitHub pull request conversations into human and bot lanes.",
   "scripts": {

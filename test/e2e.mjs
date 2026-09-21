@@ -353,7 +353,7 @@ if (process.argv.includes('--serve')) {
       const row = document.createElement('div');
       row.className = 'js-timeline-item';
       row.dataset.row = 'late-human';
-      row.innerHTML = '<div class="TimelineItem"><div class="timeline-comment"><div class="timeline-comment-header"><a class="author" href="/marius">marius</a></div><div class="comment-body">Landing this now.</div></div></div>';
+      row.innerHTML = '<div class="TimelineItem"><div class="timeline-comment"><div class="timeline-comment-header"><a class="author" href="/gantoine">gantoine</a></div><div class="comment-body">Landing this now.</div></div></div>';
       timeline.appendChild(row);
     })()`);
 
