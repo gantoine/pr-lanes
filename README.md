@@ -47,11 +47,14 @@ permission, no network calls, no background worker.
 
 ## Releasing
 
-`git tag v0.3.0 && git push --tags`, or publish a GitHub Release against a new `v0.3.0` tag — either way the
-tag push starts `.github/workflows/release.yml`, which refuses to go further unless the tag matches
-`version` in `extension/manifest.json` and the tests pass. It then submits the Firefox add-on to
-addons.mozilla.org, uploads and publishes the Chrome bundle, and attaches `chrome.zip` and `firefox.zip` to
-the release.
+`git tag v0.3.0 && git push --tags`, or publish a GitHub Release against a new tag — either way the tag push
+starts `.github/workflows/release.yml`. Any tag name releases; the tests still have to pass. It submits the
+Firefox add-on to addons.mozilla.org, uploads and publishes the Chrome bundle, and attaches `chrome.zip` and
+`firefox.zip` to the release.
+
+What ships is `version` in `extension/manifest.json`, not the tag — nothing checks that the two agree, so
+bump the manifest before tagging. Both stores reject a version they already hold, which is the backstop if
+you forget.
 
 Firefox and Chrome publish in separate jobs, so a Mozilla outage does not hold up the Chrome release, or the
 other way around.

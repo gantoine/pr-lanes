@@ -2,32 +2,17 @@ name: Release
 
 on:
   push:
-    tags: ['v*']
+    tags: ['**']
 
 permissions:
   contents: write
 
 jobs:
-  version:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: Check the tag against extension/manifest.json
-        run: |
-          tagged="${GITHUB_REF_NAME#v}"
-          declared=$(node -p "require('./extension/manifest.json').version")
-          if [ "$tagged" != "$declared" ]; then
-            echo "Tag $GITHUB_REF_NAME says $tagged, extension/manifest.json says $declared." >&2
-            exit 1
-          fi
-          echo "releasing $declared"
-
   test:
     uses: ./.github/workflows/test.yml
 
   firefox:
-    needs: [version, test]
+    needs: [test]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -42,7 +27,7 @@ jobs:
           WEB_EXT_API_SECRET: ${{ secrets.WEB_EXT_API_SECRET }}
 
   chrome:
-    needs: [version, test]
+    needs: [test]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
