@@ -35,7 +35,7 @@ test('the bot badge in the comment header is a bot', () => {
 });
 
 test('plain accounts are humans', () => {
-  assert.equal(kind({ login: 'georges-antoine' }), 'human');
+  assert.equal(kind({ login: 'gantoine' }), 'human');
   assert.equal(kind({ login: 'robotics-fan' }), 'human');
 });
 
