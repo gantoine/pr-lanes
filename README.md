@@ -1,46 +1,26 @@
 # PR Lanes for GitHub
 
+[![Install for Chrome](https://img.shields.io/badge/Chrome-Install-4285F4?logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/hangdlmlkjibcjmnhecohkkplkagnhip)
+[![Install for Firefox](https://img.shields.io/badge/Firefox-Install-FF7139?logo=firefoxbrowser&logoColor=white)](https://addons.mozilla.org/en-US/firefox/addon/pr-lanes-hide-bots-on-github/)
+
 Bots comment on every pull request, and the two humans arguing about the actual change get buried
 between coverage reports and CI summaries. PR Lanes splits a GitHub conversation into two lanes you switch
 between: **Humans** and **Bots**.
 
-Works on `github.com` pull requests and issues, in Chrome and Firefox.
-
 ## What it does
 
-- Adds a lane switcher that costs no vertical space: at rest it is a vertical strip of icons in the left
-  gutter, tucked under the author's avatar. Scroll past it and it becomes a horizontal switcher in GitHub's
-  sticky header. Pages with neither an avatar nor a header get it in the tab row, or its own row above the
-  timeline.
-- The Humans and Bots buttons turn green or amber when that lane holds comments, grey when it does not.
-  The pull request description does not count: every pull request has one, so counting it would light the
-  human side of every page. No counts either: comments arrive while you read, and a number that drifts out
-  of date is worse than no number.
-- In the Humans lane, bot reviewers drop out of the **Reviewers** sidebar too, so the list shows the people
-  whose review you are actually waiting on. Teams stay, since a team is people.
-- Press `h` to cycle Humans → Bots → All. It is ignored while you are typing in a comment box.
-- **Humans** shows people's comments and reviews. **Bots** shows everything posted by apps, CI, and review
-  bots — including the timeline events they generate. **All** is GitHub's normal view. A setting strips
-  timeline events out of the Humans lane too, if you want only what people wrote.
-- A review thread that a bot started but a human replied to stays in the Humans lane — that is a human
-  discussion, and it needs the bot comment above it for context.
-- The pull request description and the comment box never disappear, whichever lane is selected, even when
-  a bot opened the pull request.
-- The same filter applies to inline review threads on the **Files changed** tab.
+**Humans** shows people's comments and reviews, **Bots** everything posted by apps, CI and review bots
+including the timeline events they generate, and **All** is GitHub's normal view. Press `h` to cycle
+between them; it is ignored while you are typing in a comment box. The same filter applies to inline
+review threads on the **Files changed** tab, and in the Humans lane bot reviewers drop out of the
+**Reviewers** sidebar as well, so the list shows the people whose review you are actually waiting on.
+Nothing useful disappears: the pull request description and the comment box survive every lane, and a
+thread a bot started but a human replied to stays in Humans, bot comment and all.
 
-## Install
-
-Build the two bundles first:
-
-```bash
-npm run build       # writes dist/chrome, dist/firefox and matching .zip files
-```
-
-**Chrome** — `chrome://extensions` → enable *Developer mode* → *Load unpacked* → select `dist/chrome`.
-
-**Firefox** — `about:debugging#/runtime/this-firefox` → *Load Temporary Add-on* → select
-`dist/firefox/manifest.json`. A temporary add-on is removed when Firefox restarts; use `dist/firefox.zip`
-for a signed install through addons.mozilla.org.
+The lane switcher costs no vertical space. At rest it is a vertical strip of icons in the left gutter
+under the author's avatar; scroll past it and it becomes a horizontal switcher in GitHub's sticky header.
+The Humans and Bots buttons turn green or amber when that lane holds comments and grey when it does not —
+no counts, since comments arrive while you read and a stale number is worse than none.
 
 The extension is entirely local: `storage` for settings and host access to `github.com`, no other
 permission, no network calls, no background worker.
@@ -59,27 +39,10 @@ you forget.
 Firefox and Chrome publish in separate jobs, so a Mozilla outage does not hold up the Chrome release, or the
 other way around.
 
-### One-time setup
-
-**Chrome** — create the item once in the
-[Web Store dashboard](https://chrome.google.com/webstore/devconsole) by uploading `dist/chrome.zip` by hand
-and completing the store listing. Then, in a Google Cloud project with the Chrome Web Store API enabled,
-make an OAuth client of type *Desktop app* and mint a refresh token for the
-`https://www.googleapis.com/auth/chromewebstore` scope. Store:
-
-| Name | Kind | Where it comes from |
-| --- | --- | --- |
-| `CHROME_EXTENSION_ID` | repository **variable** | the 32-letter id in the Web Store listing URL |
-| `CHROME_CLIENT_ID` | secret | the OAuth client |
-| `CHROME_CLIENT_SECRET` | secret | the OAuth client |
-| `CHROME_REFRESH_TOKEN` | secret | the token exchange |
-
-Publishing sends the upload to review. A green `chrome` job means the Web Store accepted and queued it.
-
 ### Running either step by hand
 
-Both scripts read the same names from a gitignored `.env` when they are not already in the environment, so
-`cp .env.example .env` and fill it in to drive a release from your machine. Each takes `--dry-run`, which
+Both scripts read their credentials from a gitignored `.env` when they are not already in the environment,
+so `cp .env.example .env` and fill it in to drive a release from your machine. Each takes `--dry-run`, which
 prints what it would send and which credentials it found without submitting anything:
 
 ```bash

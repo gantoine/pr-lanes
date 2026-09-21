@@ -30,7 +30,7 @@ const clientSecret = process.env.CHROME_CLIENT_SECRET;
 const refreshToken = process.env.CHROME_REFRESH_TOKEN;
 
 if (!itemId || !clientId || !clientSecret || !refreshToken) {
-  fail('Missing CHROME_EXTENSION_ID, CHROME_CLIENT_ID, CHROME_CLIENT_SECRET or CHROME_REFRESH_TOKEN. See "Chrome Web Store" in the README for where each one comes from.');
+  fail('Missing CHROME_EXTENSION_ID, CHROME_CLIENT_ID, CHROME_CLIENT_SECRET or CHROME_REFRESH_TOKEN. Set them in the environment, or copy .env.example to .env and fill them in — it says where each one comes from.');
 }
 
 const manifest = JSON.parse(await readFile(path.join(root, 'extension', 'manifest.json'), 'utf8'));
