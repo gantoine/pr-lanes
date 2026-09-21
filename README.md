@@ -1,6 +1,6 @@
 # PR Lanes for GitHub
 
-A dozen bots comment on every pull request, and the two humans arguing about the actual change get buried
+Bots comment on every pull request, and the two humans arguing about the actual change get buried
 between coverage reports and CI summaries. PR Lanes splits a GitHub conversation into two lanes you switch
 between: **Humans** and **Bots**.
 
@@ -12,7 +12,7 @@ Works on `github.com` pull requests and issues, in Chrome and Firefox.
   gutter, tucked under the author's avatar. Scroll past it and it becomes a horizontal switcher in GitHub's
   sticky header. Pages with neither an avatar nor a header get it in the tab row, or its own row above the
   timeline.
-- Humans and Bots colour themselves — green or amber when that lane holds comments, grey when it does not.
+- The Humans and Bots buttons turn green or amber when that lane holds comments, grey when it does not.
   The pull request description does not count: every pull request has one, so counting it would light the
   human side of every page. No counts either: comments arrive while you read, and a number that drifts out
   of date is worse than no number.
@@ -33,7 +33,7 @@ Works on `github.com` pull requests and issues, in Chrome and Firefox.
 Build the two bundles first:
 
 ```bash
-node build.mjs      # writes dist/chrome, dist/firefox and matching .zip files
+npm run build       # writes dist/chrome, dist/firefox and matching .zip files
 ```
 
 **Chrome** — `chrome://extensions` → enable *Developer mode* → *Load unpacked* → select `dist/chrome`.
@@ -42,8 +42,8 @@ node build.mjs      # writes dist/chrome, dist/firefox and matching .zip files
 `dist/firefox/manifest.json`. A temporary add-on is removed when Firefox restarts; use `dist/firefox.zip`
 for a signed install through addons.mozilla.org.
 
-The extension is entirely local: one `storage` permission for settings, no network calls, no background
-worker.
+The extension is entirely local: `storage` for settings and host access to `github.com`, no other
+permission, no network calls, no background worker.
 
 ### Sharing it with other people
 
@@ -55,14 +55,19 @@ worker.
 3. `npm run sign:firefox` — or `npm run sign:firefox -- --dry-run` first, which prints the command and the
    credentials it found without submitting anything.
 
+The repository declares no dependencies, so signing fetches `web-ext` through `npx` and needs the network
+on its first run.
+
 The signed `.xpi` lands in `signed/`. Host it anywhere and open the link in Firefox to install it. Bump
 `version` in `extension/manifest.json` before each run: addons.mozilla.org rejects a version it has already
-signed, and the script stops early rather than let you find that out from a failed upload.
+signed. The script checks `signed/` for an `.xpi` carrying the current version and stops before uploading
+if it finds one. On a fresh clone, or after `signed/` is cleared, a duplicate version surfaces as a failed
+upload instead.
 
 **Chrome** has no equivalent. It refuses `.crx` installs from outside the Web Store unless enterprise policy
-allows the extension ID, so the choices are handing people `dist/chrome.zip` to unzip and *Load unpacked*
-(developer mode, manual updates), or an unlisted Web Store listing — link-only, not searchable, and it
-auto-updates.
+allows the extension ID. That leaves two choices: hand people `dist/chrome.zip` to unzip and *Load unpacked*,
+which means developer mode and manual updates, or publish an unlisted Web Store listing, which is link-only
+and not searchable, and auto-updates.
 
 ## Settings
 
@@ -82,22 +87,28 @@ Or click the gear in the lane switcher.
 ## How a bot is recognised
 
 Every row gets two facts: who wrote it (`human`, `bot`, or nobody) and what it is (a comment, a timeline
-event, or page furniture such as the comment box). Lanes filter on the author; the *Show timeline events*
-setting filters on the form. Page furniture matches no hiding rule at all, so anything the extension does
-not recognise is left alone rather than hidden.
+event, or page furniture such as the comment box). Lanes filter on who wrote it; *Hide timeline events*
+filters on what it is. Page furniture matches no hiding rule at all, so anything the extension does not
+recognise is left alone rather than hidden.
 
-Authorship is decided in order: the human override list, a `name[bot]` login **or an author link pointing at
-`/apps/…`** (every GitHub App has one, whatever display name it uses — this is what catches `Copilot`, which
-shows an `AI` badge and no bot suffix), the built-in bot list (~37 accounts that post through a token and
-carry no other signal, plus the most common apps), a GitHub App avatar
-(`avatars.githubusercontent.com/in/…`), a `bot` or `AI` badge next to the author, then the name heuristics.
-Anything unrecognised counts as human, so a misdetection hides nothing.
+Authorship is decided in this order, and the first rule that matches wins:
 
-Two things keep that from misfiring in either direction. Avatars inside a comment body are ignored, so a
+1. The *Always treat as human* list.
+2. A `name[bot]` login, or an author link pointing at `/apps/…`.
+3. The built-in bot list: 37 accounts, covering the most common apps and the accounts that post through a
+   token and carry no other signal.
+4. A GitHub App avatar (`avatars.githubusercontent.com/in/…`).
+5. A `bot` or `AI` badge next to the author.
+6. The name heuristics, when they are on.
+
+Rule 2 is what catches `Copilot`, which carries no bot suffix. Every GitHub App has an `/apps/` link,
+whatever display name it uses. Anything unrecognised counts as human, so a misdetection hides nothing.
+
+Three things keep that from misfiring in either direction. Avatars inside a comment body are ignored, so a
 commenter cannot post a bot avatar to hide their own comment. Badges are read next to the author only, not
-anywhere in the row, so an event like "you requested a review from Copilot" stays in the Humans lane — it is
-your action, not the bot's. And a comment box with no author of its own (a collapsed "Show resolved" thread,
-for instance) does not vote on who wrote the row it sits in.
+anywhere in the row, so an event like "you requested a review from Copilot" stays in the Humans lane: it is
+your action, not the bot's. A comment box with no author of its own, such as a collapsed "Show resolved"
+thread, does not vote on who wrote the row it sits in.
 
 Accounts that comment through a personal access token — some Codecov and internal release setups — carry no
 bot signal at all. Add those under *Extra bot accounts*.
@@ -105,6 +116,8 @@ bot signal at all. Add those under *Extra bot accounts*.
 ## Development
 
 ```
+build.mjs                Builds dist/chrome and dist/firefox, and the .zip of each
+sign.mjs                 Signs the Firefox bundle through npx web-ext
 extension/
   manifest.json          Chrome MV3 manifest; build.mjs derives the Firefox one
   content/classify.js    Bot/human classification and timeline DOM traversal
@@ -116,6 +129,8 @@ test/
   e2e.mjs                Drives headless Chrome over CDP against the real content scripts
   e2e-page.html          A GitHub timeline in miniature: the markup both the test and --serve run against
   extension-stub.js      Minimal chrome.storage/runtime stand-in so the content scripts run in a plain page
+tools/
+  make-icons.mjs         Regenerates extension/icons
 ```
 
 ```bash
@@ -123,7 +138,7 @@ npm test            # unit tests, then the headless-Chrome end-to-end test
 npm run test:unit
 npm run test:e2e    # needs Chrome; override with CHROME=/path/to/chrome
 npm run test:serve  # serves the real content scripts against test/e2e-page.html to eyeball in a browser
-node build.mjs
+npm run build
 npm run sign:firefox -- --dry-run
 ```
 
@@ -136,10 +151,14 @@ manifest itself is checked with `"/Applications/Google Chrome.app/Contents/MacOS
 - Scoped to `github.com`. For GitHub Enterprise, add your host to `matches` and `host_permissions` in
   `extension/manifest.json` and rebuild.
 - Classification reads GitHub's DOM. The classic timeline (`.js-discussion`, `.TimelineItem`, including the
-  `rails-partial` wrappers GitHub now nests them in) is verified against live pull request markup; selectors
-  for the newer React issue view (`issue-viewer-comments-container`) are present but fall back to treating
+  `rails-partial` wrappers GitHub now nests them in) is verified against live pull request markup. Selectors
+  for the newer React issue view (`issue-viewer-comments-container`) are present, but fall back to treating
   each child of the timeline container as one item. Unrecognised rows classify as page furniture and are
   never hidden, so unfamiliar markup degrades to GitHub's normal view. If GitHub reshuffles its markup,
   `content/classify.js` is the one file to update.
 - Nothing is deleted or collapsed server-side — hiding is CSS on your machine, so everyone else sees the
   usual thread.
+
+## Licence
+
+MIT. See [LICENSE](LICENSE).
