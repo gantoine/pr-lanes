@@ -61,15 +61,6 @@ other way around.
 
 ### One-time setup
 
-**Firefox** — create the add-on once on [addons.mozilla.org](https://addons.mozilla.org/developers/) under
-the id `pr-lanes@gantoine.com` (`build.mjs` writes it into the Firefox manifest) and fill in its listing.
-Then create an API key pair at [the API key page](https://addons.mozilla.org/developers/addon/api/key/) and
-store it as the repository secrets `WEB_EXT_API_KEY` and `WEB_EXT_API_SECRET`.
-
-CI signs with `--channel listed --approval-timeout 0`: it uploads and exits rather than waiting out a review
-that can take days. Mozilla emails you when the review finishes, and the listing updates itself — so a green
-`firefox` job means *submitted*, not *live*.
-
 **Chrome** — create the item once in the
 [Web Store dashboard](https://chrome.google.com/webstore/devconsole) by uploading `dist/chrome.zip` by hand
 and completing the store listing. Then, in a Google Cloud project with the Chrome Web Store API enabled,
