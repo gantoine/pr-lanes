@@ -207,14 +207,23 @@
     return null;
   }
 
-  function readAuthor(element) {
-    const header = element.querySelector(HEADER_SELECTOR);
-    const link = (header && header.querySelector(AUTHOR_SELECTOR)) || element.querySelector(AUTHOR_SELECTOR);
+  function isAppAvatar(image) {
+    return Boolean(image) && /githubusercontent\.com\/in\//i.test(image.getAttribute('src') || '');
+  }
+
+  // Who a link names: the text when it is a login, the /apps/ segment or the path otherwise.
+  function loginFromLink(link) {
     const href = link ? link.getAttribute('href') || '' : '';
     const app = href.match(APP_HREF);
-
     let raw = link ? (link.textContent || '').trim() : '';
     if (link && (!raw || /\s/.test(raw))) raw = (app ? app[1] : loginFromHref(href)) || raw;
+    return { raw, app: Boolean(app) };
+  }
+
+  // Every bot signal in one place, so the timeline and the reviewers sidebar cannot disagree
+  // about the same account. `header` is the scope a badge has to sit in; the sidebar has none.
+  function readIdentity(element, link, header) {
+    const named = loginFromLink(link);
 
     let avatar;
     const avatarImage = () => {
@@ -222,6 +231,7 @@
       return avatar;
     };
 
+    let raw = named.raw;
     if (!raw) {
       const image = avatarImage();
       raw = image ? (image.getAttribute('alt') || '').trim() : '';
@@ -230,10 +240,13 @@
     return {
       login: normalizeLogin(raw),
       suffixedBot: /\[bot\]\s*$/i.test(raw),
-      appLink: Boolean(app),
-      get appAvatar() {
+      appLink: named.app,
+      get avatarSrc() {
         const image = avatarImage();
-        return Boolean(image) && /githubusercontent\.com\/in\//i.test(image.getAttribute('src') || '');
+        return image ? image.getAttribute('src') || '' : '';
+      },
+      get appAvatar() {
+        return isAppAvatar(avatarImage());
       },
       get botBadge() {
         const scope = header || (link && link.parentElement) || element;
@@ -243,6 +256,12 @@
         return false;
       }
     };
+  }
+
+  function readAuthor(element) {
+    const header = element.querySelector(HEADER_SELECTOR);
+    const link = (header && header.querySelector(AUTHOR_SELECTOR)) || element.querySelector(AUTHOR_SELECTOR);
+    return readIdentity(element, link, header);
   }
 
   function commentNodes(row) {
@@ -277,11 +296,6 @@
     return node.id ? PR_BODY_ID.test(node.id) : true;
   }
 
-  function avatarSrc(node) {
-    const image = authoredAvatar(node, node.querySelector(HEADER_SELECTOR));
-    return image ? image.getAttribute('src') || '' : '';
-  }
-
   function classifyRow(row, rules) {
     if (carriesComment(row)) {
       let written = commentNodes(row)
@@ -294,7 +308,7 @@
       // The face on a collapsed row has to be the author it speaks for, not whoever posted first.
       const spoken = written[kinds.indexOf(actor)];
 
-      return { actor, form: 'comment', login: spoken.author.login, avatar: avatarSrc(spoken.node) };
+      return { actor, form: 'comment', login: spoken.author.login, avatar: spoken.author.avatarSrc };
     }
 
     if (row.querySelector(COMPOSER_SELECTOR)) return { actor: 'none', form: 'chrome' };
@@ -312,10 +326,6 @@
     if (!author.login) return { actor: 'none', form: 'chrome' };
 
     return { actor: classifyAuthor(author, rules), form: 'event' };
-  }
-
-  function commentHeader(row) {
-    return row.querySelector(HEADER_SELECTOR);
   }
 
   function commentPreview(row) {
@@ -372,22 +382,7 @@
   }
 
   function classifyReviewer(row, rules) {
-    const link = row.querySelector(REVIEWER_LINK_SELECTOR);
-    const href = link ? link.getAttribute('href') || '' : '';
-    const app = href.match(APP_HREF);
-
-    let raw = link ? (link.textContent || '').trim() : '';
-    if (!raw || /\s/.test(raw)) raw = (app ? app[1] : loginFromHref(href)) || raw;
-
-    const image = row.querySelector(AVATAR_SELECTOR);
-
-    const author = {
-      login: normalizeLogin(raw),
-      suffixedBot: /\[bot\]\s*$/i.test(raw),
-      appLink: Boolean(app),
-      appAvatar: Boolean(image) && /githubusercontent\.com\/in\//i.test(image.getAttribute('src') || '')
-    };
-
+    const author = readIdentity(row, row.querySelector(REVIEWER_LINK_SELECTOR), null);
     return { actor: classifyAuthor(author, rules), form: 'reviewer' };
   }
 
@@ -446,19 +441,16 @@
   root.PRLanes = Object.assign(root.PRLanes || {}, {
     CLASSIFICATION_KEYS,
     DEFAULTS,
-    DEFAULT_BOT_LOGINS,
     botsMissedByHeuristics,
     buildRules,
     classifyAuthor,
     classifyReviewer,
     classifyRow,
-    commentHeader,
     commentPreview,
     findFilesRoot,
     findReviewersRoot,
     isResolved,
     findTimelineRoot,
-    isCommit,
     isPrBody,
     normalizeLogin,
     parseLoginList,

@@ -20,7 +20,7 @@
   let rulesRevision = 1;
   let hide;
   let bar = null;
-  let barParts = null;
+  let barToggles = null;
   let targets = null;
   let scanHandle = 0;
   let placeHandle = 0;
@@ -113,6 +113,18 @@
     if (element.getAttribute(name) !== value) element.setAttribute(name, value);
   }
 
+  // The avatar gutter, measured once. Read before you write: these are layout reads, and
+  // interleaving them with insertions forces a reflow apiece.
+  function railOf(avatar) {
+    if (!avatar || !avatar.parentElement || getComputedStyle(avatar).position !== 'absolute') return null;
+    return { left: getComputedStyle(avatar).left, top: `${avatar.offsetTop + avatar.offsetHeight + RAIL_GAP}px` };
+  }
+
+  function railTo(element, gutter) {
+    if (element.style.left !== gutter.left) element.style.left = gutter.left;
+    if (element.style.top !== gutter.top) element.style.top = gutter.top;
+  }
+
   function buildStrip(row, kind) {
     const face = kind.avatar
       ? make('img', { class: 'prlanes-strip-face', src: kind.avatar, alt: '' })
@@ -135,9 +147,9 @@
   // GitHub gives no avatar to takes it inline at the top instead.
   function placeHide(row, control) {
     const avatar = row.querySelector(AVATAR_RAIL_SELECTOR);
-    const railed = Boolean(avatar) && avatar.parentElement && getComputedStyle(avatar).position === 'absolute';
+    const gutter = railOf(avatar);
 
-    if (!railed) {
+    if (!gutter) {
       control.classList.remove('prlanes-hide--rail');
       if (control.getAttribute('style')) control.removeAttribute('style');
       if (control.parentElement !== row) row.insertBefore(control, row.firstChild);
@@ -146,19 +158,15 @@
 
     if (control.parentElement !== avatar.parentElement) avatar.parentElement.insertBefore(control, avatar.nextSibling);
     control.classList.add('prlanes-hide--rail');
-
-    const left = getComputedStyle(avatar).left;
-    const top = `${avatar.offsetTop + avatar.offsetHeight + RAIL_GAP}px`;
-    if (control.style.left !== left) control.style.left = left;
-    if (control.style.top !== top) control.style.top = top;
+    railTo(control, gutter);
   }
 
   function fillStrip(row, kind) {
     const existing = row.querySelector(STRIP_CHILD_SELECTOR);
     if (existing) existing.remove();
-    const hide = row.querySelector(`.${HIDE_CLASS}`);
-    if (hide) hide.remove();
-    if (!strippable(row)) return;
+    const control = row.querySelector(`.${HIDE_CLASS}`);
+    if (control) control.remove();
+    if (!botComment(row)) return;
     row.prepend(buildStrip(row, kind));
     row.prepend(make('button', { type: 'button', class: HIDE_CLASS, title: 'Hide these comments' }, ['Hide']));
   }
@@ -226,9 +234,11 @@
 
     foldRuns(rows);
 
-    for (const thread of lanes.resolvableThreads(target.root)) {
-      if (lanes.isResolved(thread)) setData(thread, 'prlanesResolved', '1');
-      else delete thread.dataset.prlanesResolved;
+    if (settings.hideResolvedThreads) {
+      for (const thread of lanes.resolvableThreads(target.root)) {
+        if (lanes.isResolved(thread)) setData(thread, 'prlanesResolved', '1');
+        else delete thread.dataset.prlanesResolved;
+      }
     }
 
     setData(target.root, 'prlanesBots', hide.bots ? 'hide' : 'show');
@@ -249,9 +259,6 @@
   bot: [
     ['path', {"d":"M8 1a.75.75 0 0 1 .75.75V3h2.75A2.5 2.5 0 0 1 14 5.5v5a2.5 2.5 0 0 1-2.5 2.5h-7A2.5 2.5 0 0 1 2 10.5v-5A2.5 2.5 0 0 1 4.5 3h2.75V1.75A.75.75 0 0 1 8 1Zm-2.25 5.5a1.25 1.25 0 1 0 0 2.5 1.25 1.25 0 0 0 0-2.5Zm4.5 0a1.25 1.25 0 1 0 0 2.5 1.25 1.25 0 0 0 0-2.5Z"}]
   ],
-  bots: [
-    ['path', {"d":"M8 1a.75.75 0 0 1 .75.75V3h2.75A2.5 2.5 0 0 1 14 5.5v5a2.5 2.5 0 0 1-2.5 2.5h-7A2.5 2.5 0 0 1 2 10.5v-5A2.5 2.5 0 0 1 4.5 3h2.75V1.75A.75.75 0 0 1 8 1Zm-2.25 5.5a1.25 1.25 0 1 0 0 2.5 1.25 1.25 0 0 0 0-2.5Zm4.5 0a1.25 1.25 0 1 0 0 2.5 1.25 1.25 0 0 0 0-2.5Z"}]
-  ],
   events: [
     ['path', {"d":"M11.93 8.5a4.002 4.002 0 0 1-7.86 0H.75a.75.75 0 0 1 0-1.5h3.32a4.002 4.002 0 0 1 7.86 0h3.32a.75.75 0 0 1 0 1.5Zm-1.43-.75a2.5 2.5 0 1 0-5 0 2.5 2.5 0 0 0 5 0Z"}]
   ],
@@ -259,6 +266,9 @@
     ['path', {"d":"M8 0a8.2 8.2 0 0 1 .701.031C9.444.095 9.99.645 10.16 1.29l.288 1.107c.018.066.079.158.212.224.231.114.454.243.668.386.123.082.233.09.299.071l1.103-.303c.644-.176 1.392.021 1.82.63.27.385.506.792.704 1.218.315.675.111 1.422-.364 1.891l-.814.806c-.049.048-.098.147-.088.294.016.257.016.515 0 .772-.01.147.039.246.088.294l.814.806c.475.469.679 1.216.364 1.891a7.977 7.977 0 0 1-.704 1.217c-.428.61-1.176.807-1.82.63l-1.103-.302c-.066-.019-.176-.011-.299.071a4.909 4.909 0 0 1-.668.386c-.133.066-.194.158-.212.224l-.288 1.107c-.17.645-.716 1.195-1.459 1.259a8.147 8.147 0 0 1-1.402 0c-.743-.064-1.289-.614-1.459-1.259l-.288-1.107c-.018-.066-.079-.158-.212-.224a4.958 4.958 0 0 1-.668-.386c-.123-.082-.233-.09-.299-.071l-1.103.303c-.644.176-1.392-.021-1.82-.63a8.12 8.12 0 0 1-.704-1.218c-.315-.675-.111-1.422.364-1.891l.814-.806c.049-.048.098-.147.088-.294a6.214 6.214 0 0 1 0-.772c.01-.147-.039-.246-.088-.294l-.814-.806C.635 6.045.431 5.298.746 4.623a7.92 7.92 0 0 1 .704-1.217c.428-.61 1.176-.807 1.82-.63l1.103.302c.066.019.176.011.299-.071.214-.143.437-.272.668-.386.133-.066.194-.158.212-.224L5.84 1.29c.17-.645.716-1.195 1.459-1.259A8.094 8.094 0 0 1 8 0Zm-.571 1.525c-.036.003-.108.036-.137.146l-.289 1.105c-.147.561-.549.967-.998 1.189-.173.086-.34.183-.5.29-.417.278-.97.423-1.529.27l-1.103-.303c-.109-.03-.175.016-.195.045-.22.312-.412.644-.573.99-.014.031-.021.11.059.19l.815.806c.411.406.562.957.53 1.456a4.709 4.709 0 0 0 0 .582c.032.499-.119 1.05-.53 1.456l-.815.806c-.08.08-.073.159-.059.19.161.346.353.677.573.989.02.03.086.076.195.046l1.102-.303c.56-.153 1.113-.008 1.53.27.161.107.328.204.501.29.449.222.851.628.998 1.189l.289 1.105c.029.11.101.143.137.146a6.6 6.6 0 0 0 1.142 0c.036-.003.108-.036.137-.146l.289-1.105c.147-.561.549-.967.998-1.189.173-.086.34-.183.5-.29.417-.278.97-.423 1.529-.27l1.103.303c.109.03.175-.016.195-.045.22-.313.411-.644.573-.99.014-.031.021-.11-.059-.19l-.815-.806c-.411-.406-.562-.957-.53-1.456a4.709 4.709 0 0 0 0-.582c-.032-.499.119-1.05.53-1.456l.815-.806c.08-.08.073-.159.059-.19a6.464 6.464 0 0 0-.573-.989c-.02-.03-.086-.076-.195-.046l-1.102.303c-.56.153-1.113.008-1.53-.27a4.44 4.44 0 0 0-.501-.29c-.449-.222-.851-.628-.998-1.189l-.289-1.105c-.029-.11-.101-.143-.137-.146a6.6 6.6 0 0 0-1.142 0ZM11 8a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM9.5 8a1.5 1.5 0 1 0-3.001.001A1.5 1.5 0 0 0 9.5 8Z"}]
   ]
   };
+
+  // The switch is plural, the actor is singular; the robot is the same robot.
+  ICONS.bots = ICONS.bot;
 
   function make(tag, attributes, children) {
     const node = SVG_TAGS.has(tag) ? document.createElementNS(SVG_NS, tag) : document.createElement(tag);
@@ -273,12 +283,9 @@
     return make('svg', attributes, ICONS[name].map(([tag, shape]) => make(tag, shape)));
   }
 
-  const SHORTCUT = { bots: 'b', events: 'e' };
-  const NOUN = { bots: 'bots', events: 'events' };
-
   // The label is the click, not the state: once the bots are gone the button offers them back.
   function wording(name) {
-    return `${hide[name] ? 'Show' : 'Hide'} ${NOUN[name]}`;
+    return `${hide[name] ? 'Show' : 'Hide'} ${name}`;
   }
 
   function toggle(name) {
@@ -287,7 +294,7 @@
       class: TOGGLE_CLASS,
       'data-hide': name
     }, [
-      make('span', { class: `prlanes-dot prlanes-dot--${name}` }),
+      make('span', { class: 'prlanes-dot' }),
       make('span', { class: 'prlanes-icon' }, [icon(name)]),
       make('span', { class: 'prlanes-label' })
     ]);
@@ -320,7 +327,7 @@
       settingsLink.remove();
     }
 
-    barParts = { toggles: Array.from(element.querySelectorAll(`.${TOGGLE_CLASS}`)) };
+    barToggles = Array.from(element.querySelectorAll(`.${TOGGLE_CLASS}`));
 
     return element;
   }
@@ -336,9 +343,9 @@
   }
 
   function authorAvatar() {
-    const avatar = document.querySelector(`.js-discussion ${AVATAR_RAIL_SELECTOR}`);
-    if (!visible(avatar) || !avatar.parentElement) return null;
-    return getComputedStyle(avatar).position === 'absolute' ? avatar : null;
+    const timeline = lanes.findTimelineRoot(document);
+    const avatar = timeline && timeline.querySelector(AVATAR_RAIL_SELECTOR);
+    return visible(avatar) ? avatar : null;
   }
 
   function barSlot() {
@@ -346,7 +353,8 @@
     if (visible(sticky)) return { element: sticky.querySelector(HEADER_SLOT_SELECTOR) || sticky, variant: 'header' };
 
     const avatar = authorAvatar();
-    if (avatar) return { element: avatar.parentElement, variant: 'rail', avatar };
+    const gutter = railOf(avatar);
+    if (gutter) return { element: avatar.parentElement, variant: 'rail', gutter };
 
     const tabs = tabStrip();
     if (tabs) return { element: tabs, variant: 'tabs' };
@@ -367,12 +375,7 @@
     });
   }
 
-  function alignRail(avatar) {
-    const left = getComputedStyle(avatar).left;
-    const top = `${avatar.offsetTop + avatar.offsetHeight + RAIL_GAP}px`;
-    if (bar.style.left !== left) bar.style.left = left;
-    if (bar.style.top !== top) bar.style.top = top;
-  }
+
 
   function placeBar(target) {
     lastTarget = target;
@@ -387,7 +390,7 @@
 
     if (slot) {
       if (bar.parentElement !== slot.element) slot.element.appendChild(bar);
-      if (slot.variant === 'rail') alignRail(slot.avatar);
+      if (slot.variant === 'rail') railTo(bar, slot.gutter);
       else bar.removeAttribute('style');
       return;
     }
@@ -400,13 +403,13 @@
   function updateBar(counts) {
     if (!bar || !bar.isConnected) return;
 
-    for (const button of barParts.toggles) {
+    for (const button of barToggles) {
       const name = button.dataset.hide;
       const label = wording(name);
       button.classList.toggle('prlanes-toggle--on', hide[name]);
       button.classList.toggle('prlanes-toggle--lit', counts[name] > 0);
       setText(button.querySelector('.prlanes-label'), label);
-      setAttr(button, 'title', `${label} (${SHORTCUT[name]})`);
+      setAttr(button, 'title', `${label} (${name[0].toUpperCase()})`);
     }
   }
 

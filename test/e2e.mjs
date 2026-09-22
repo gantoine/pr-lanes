@@ -96,6 +96,7 @@ async function waitFor(fn, timeoutMs, label) {
 const SNAPSHOT = `(() => {
   const rows = {};
   const strips = {};
+  const logins = {};
   for (const row of document.querySelectorAll('[data-row]')) {
     rows[row.dataset.row] = {
       actor: row.dataset.prlanesActor,
@@ -104,6 +105,7 @@ const SNAPSHOT = `(() => {
       visible: getComputedStyle(row).display !== 'none',
       fold: row.dataset.prlanesFold || null
     };
+    if (row.dataset.prlanesLogin) logins[row.dataset.row] = row.dataset.prlanesLogin;
     const strip = row.querySelector(':scope > .prlanes-strip');
     if (!strip) continue;
     const face = strip.querySelector('.prlanes-strip-face');
@@ -122,10 +124,11 @@ const SNAPSHOT = `(() => {
   }
   const bar = document.querySelector('.prlanes-bar');
   const barCount = document.querySelectorAll('.prlanes-bar').length;
-  if (!bar) return { rows, strips, hasBar: false, barCount };
+  if (!bar) return { rows, strips, logins, hasBar: false, barCount };
   return {
     rows,
     strips,
+    logins,
     hasBar: true,
     barCount,
     hiding: Object.fromEntries(Array.from(bar.querySelectorAll('.prlanes-toggle')).map((button) => [
@@ -204,12 +207,12 @@ if (process.argv.includes('--serve')) {
 
     assert.deepEqual(
       quiet.hiding.bots,
-      { on: true, label: 'Show bots', title: 'Show bots (b)', lit: true },
+      { on: true, label: 'Show bots', title: 'Show bots (B)', lit: true },
       'a conversation opens with bots hidden, so the button offers to show them'
     );
     assert.deepEqual(
       quiet.hiding.events,
-      { on: false, label: 'Hide events', title: 'Hide events (e)', lit: true },
+      { on: false, label: 'Hide events', title: 'Hide events (E)', lit: true },
       'and with timeline events left alone, so that button offers to hide them'
     );
     assert.equal(quiet.slot, 'rail', 'the buttons sit in a rail under the author avatar at rest');
@@ -230,6 +233,8 @@ if (process.argv.includes('--serve')) {
     assert.deepEqual(quiet.rows['composer'], uncollapsed({ actor: 'none', form: 'chrome', pinned: false, visible: true }));
     assert.deepEqual(quiet.rows['reviewer-human'], uncollapsed({ actor: 'human', form: 'reviewer', pinned: false, visible: true }));
     assert.deepEqual(quiet.rows['reviewer-team'], uncollapsed({ actor: 'human', form: 'reviewer', pinned: false, visible: true }));
+    assert.deepEqual(quiet.rows['reviewer-badged'], uncollapsed({ actor: 'bot', form: 'reviewer', pinned: false, visible: false }),
+      'a bot badge counts in the sidebar the same as it does in the timeline');
 
     // Bot comments shrink to a strip; everything else a bot did goes.
     assert.deepEqual(quiet.rows['bot-comment'], { actor: 'bot', form: 'comment', pinned: false, visible: true, fold: 'strip' });
@@ -279,8 +284,8 @@ if (process.argv.includes('--serve')) {
       'https://avatars.githubusercontent.com/in/15368?v=4',
       'a bot with an avatar wears it; one without falls back to the bot glyph'
     );
-    assert.equal(quiet.strips['human-thread'].shown, false, 'a human comment carries no visible strip');
-    assert.equal(quiet.strips['human-thread'].who, 'gantoine', 'and the strip it does carry speaks for the human, not the bot that opened the thread');
+    assert.equal(quiet.strips['human-thread'], undefined, 'a comment nobody is hiding is built no strip at all');
+    assert.equal(quiet.logins['human-thread'], 'gantoine', 'a thread a bot opened but a person replied to speaks for the person');
     assert.equal(quiet.strips['bot-event'], undefined, 'timeline events have nothing worth previewing');
     assert.equal(quiet.strips['reviewer-bot'], undefined, 'nor do sidebar reviewers');
     assert.equal(quiet.strips['pr-body'], undefined, 'nor does the pull request description');
