@@ -4,6 +4,7 @@
   const DEFAULTS = {
     defaultHideBots: true,
     defaultHideEvents: false,
+    collapseBots: true,
     rememberPerRepo: false,
     hideResolvedThreads: false,
     extraBots: '',
@@ -100,6 +101,8 @@
 
   const COMPOSER_SELECTOR = 'textarea, [data-testid="comment-composer"], [data-testid="markdown-editor"]';
 
+  const BOT_PROMPT = /^mention @[a-z0-9-]+ in a comment to make changes to this pull request\.?$/i;
+
   // GitHub types every timeline event by the octicon in its badge, and tags commit rows with a
   // GraphQL commit id. Either one is enough to know a push when we see it.
   const TIMELINE_BADGE_SELECTOR = ':scope > .TimelineItem-badge, :scope > [class*="TimelineItem-badge"]';
@@ -131,6 +134,8 @@
   const SIDEBAR_SECTION_SELECTOR = '.js-issue-sidebar-form, [data-testid*="reviewers"], [data-testid="sidebar-reviewers-section"]';
 
   const REVIEWER_LINK_SELECTOR = 'a[href^="/apps/"], a[data-hovercard-url], a.assignee, a[href^="/orgs/"]';
+
+  const ASSIGNED_SELECTOR = '[data-assignee-name]';
 
   const THREAD_SELECTOR = [
     '.js-resolvable-timeline-thread-container',
@@ -251,6 +256,12 @@
     return Boolean(row.querySelector(COMMENT_BODY_SELECTOR));
   }
 
+  // A review whose threads are still collapsed has no comment body in the page yet, but it is the
+  // review: treat it as something somebody said, not as a timeline event to be swept away.
+  function carriesComment(row) {
+    return hasCommentBody(row) || Boolean(row.querySelector(THREAD_SELECTOR));
+  }
+
   function isCommit(row) {
     const gid = row.getAttribute ? row.getAttribute('data-gid') : '';
     if (gid && COMMIT_GID.test(gid)) return true;
@@ -272,7 +283,7 @@
   }
 
   function classifyRow(row, rules) {
-    if (hasCommentBody(row)) {
+    if (carriesComment(row)) {
       let written = commentNodes(row)
         .map((node) => ({ node, author: readAuthor(node) }))
         .filter((entry) => entry.author.login);
@@ -291,10 +302,20 @@
     // A push belongs to nobody, so hiding bots never takes it: it is how you see what got addressed.
     if (isCommit(row)) return { actor: 'none', form: 'commit' };
 
+    // The "Mention @copilot in a comment to make changes" note has no author of its own, but it
+    // belongs to the bot it names, so it goes when the bots go.
+    if (BOT_PROMPT.test((row.textContent || '').replace(/\s+/g, ' ').trim())) {
+      return { actor: 'bot', form: 'chrome' };
+    }
+
     const author = readAuthor(row);
     if (!author.login) return { actor: 'none', form: 'chrome' };
 
     return { actor: classifyAuthor(author, rules), form: 'event' };
+  }
+
+  function commentHeader(row) {
+    return row.querySelector(HEADER_SELECTOR);
   }
 
   function commentPreview(row) {
@@ -326,6 +347,11 @@
   }
 
   function reviewerRows(root) {
+    // GitHub marks the reviewers actually on the pull request. Suggestions share the same form and
+    // are nobody's review yet, so they are not ours to take away.
+    const assigned = Array.from(root.querySelectorAll(ASSIGNED_SELECTOR));
+    if (assigned.length) return outermost(assigned, root);
+
     const rows = new Set();
 
     for (const link of root.querySelectorAll(REVIEWER_LINK_SELECTOR)) {
@@ -426,6 +452,7 @@
     classifyAuthor,
     classifyReviewer,
     classifyRow,
+    commentHeader,
     commentPreview,
     findFilesRoot,
     findReviewersRoot,

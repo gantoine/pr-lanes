@@ -70,6 +70,7 @@ test('an unknown author counts as a person, so their comment is never hidden', (
 
 test('the settings schema is exported for both the content script and the options page', () => {
   assert.deepEqual(Object.keys(lanes.DEFAULTS).sort(), [
+    'collapseBots',
     'defaultHideBots',
     'defaultHideEvents',
     'extraBots',

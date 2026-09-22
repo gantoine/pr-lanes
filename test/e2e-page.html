@@ -28,18 +28,34 @@
     <form class="js-issue-sidebar-form" data-role="reviewers">
       <h3 class="discussion-sidebar-heading">Reviewers</h3>
       <span class="css-truncate">
-        <div class="d-flex flex-items-center mb-2" data-row="reviewer-bot">
-          <a href="/apps/coderabbitai"><img class="avatar" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="coderabbitai" /></a>
-          <a href="/apps/coderabbitai">coderabbitai[bot]</a>
+        <div class="d-flex flex-items-center mb-2">
+          <span class="d-flex min-width-0" data-assignee-name="coderabbitai[bot]" data-row="reviewer-bot">
+            <a href="/apps/coderabbitai"><img class="avatar" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="coderabbitai" /></a>
+            <a class="assignee" href="/apps/coderabbitai">coderabbitai[bot]</a>
+          </span>
         </div>
-        <div class="d-flex flex-items-center mb-2" data-row="reviewer-human">
-          <a href="/gantoine" data-hovercard-url="/users/gantoine/hovercard"><img class="avatar" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="gantoine" /></a>
-          <a href="/gantoine" data-hovercard-url="/users/gantoine/hovercard">gantoine</a>
+        <div class="d-flex flex-items-center mb-2">
+          <span class="d-flex min-width-0" data-assignee-name="gantoine" data-row="reviewer-human">
+            <a href="/gantoine" data-hovercard-url="/users/gantoine/hovercard"><img class="avatar" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="gantoine" /></a>
+            <a class="assignee" href="/gantoine" data-hovercard-url="/users/gantoine/hovercard">gantoine</a>
+          </span>
         </div>
-        <div class="d-flex flex-items-center mb-2" data-row="reviewer-team">
-          <a href="/orgs/PostHog/teams/team-security">Team Security</a>
+        <div class="d-flex flex-items-center mb-2">
+          <span class="d-flex min-width-0" data-assignee-name="Team Security" data-row="reviewer-team">
+            <a class="assignee" href="/orgs/PostHog/teams/team-security">Team Security</a>
+          </span>
         </div>
       </span>
+
+      <div class="discussion-sidebar-heading">Suggestions</div>
+      <div class="d-flex flex-items-center mb-2" data-row="suggested-human">
+        <a href="/zurdi15" data-hovercard-url="/users/zurdi15/hovercard">zurdi15</a>
+        <button type="button" class="js-suggested-reviewer-button">Request</button>
+      </div>
+      <div class="d-flex flex-items-center mb-2" data-row="suggested-bot">
+        <a href="/apps/copilot-pull-request-reviewer">Copilot</a>
+        <button type="button" class="js-suggested-reviewer-button">Request</button>
+      </div>
     </form>
 
     <div class="js-discussion">
@@ -63,8 +79,14 @@
           <div class="TimelineItem">
             <div class="timeline-comment js-comment-container" id="issuecomment-1">
               <div class="timeline-comment-header">
-                <a class="author" href="/apps/github-actions">github-actions</a>
-                <span class="Label">bot</span>
+                <h3>
+                  <a class="author" href="/apps/github-actions">github-actions</a>
+                  <span class="Label">bot</span>
+                </h3>
+                <div class="timeline-comment-actions" data-role="comment-actions">
+                  <span class="Label Label--secondary">Contributor</span>
+                  <button type="button" class="timeline-comment-action">&hellip;</button>
+                </div>
               </div>
               <div class="comment-body">All checks have passed.</div>
             </div>
@@ -143,6 +165,57 @@
           <div class="TimelineItem TimelineItem--condensed">
             <a class="author" href="/apps/github-actions">github-actions</a>
             <span class="Label">bot</span> added the <span class="Label">stale</span> label
+          </div>
+        </div>
+
+        <div class="js-timeline-item" data-row="run-1">
+          <div class="TimelineItem" style="position: relative">
+            <a class="TimelineItem-avatar" href="/apps/coderabbitai" style="position: absolute; left: -72px; top: 0; width: 40px; height: 40px">
+              <img class="avatar" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="coderabbitai" style="width: 40px; height: 40px" />
+            </a>
+            <div class="timeline-comment js-comment-container">
+              <div class="timeline-comment-header"><a class="author" href="/apps/coderabbitai">coderabbitai</a></div>
+              <div class="comment-body">First of three.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="js-timeline-item" data-row="run-2">
+          <div class="TimelineItem">
+            <div class="timeline-comment js-comment-container">
+              <div class="timeline-comment-header"><a class="author" href="/apps/coderabbitai">coderabbitai</a></div>
+              <div class="comment-body">Second of three.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="js-timeline-item" data-row="run-3">
+          <div class="TimelineItem">
+            <div class="timeline-comment js-comment-container">
+              <div class="timeline-comment-header"><a class="author" href="/apps/coderabbitai">coderabbitai</a></div>
+              <div class="comment-body">Third of three.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="js-timeline-item" data-row="lazy-review">
+          <div class="TimelineItem">
+            <div class="TimelineItem-body">
+              <a class="author" href="/apps/greptile-apps">greptile-apps</a>
+              <span class="Label">Bot</span> reviewed
+            </div>
+            <div class="TimelineItem">
+              <review-thread-collapsible class="review-thread-component js-comment-container js-resolvable-timeline-thread-container" data-resolved="false">
+                <a class="text-mono" href="/PostHog/posthog/pull/1/files/abc#diff-2">src/router.ts</a>
+                <button class="review-thread-show-text">Show resolved</button>
+              </review-thread-collapsible>
+            </div>
+          </div>
+        </div>
+
+        <div class="js-timeline-item" data-row="copilot-prompt">
+          <div class="TimelineItem TimelineItem--condensed">
+            Mention @copilot in a comment to make changes to this pull request.
           </div>
         </div>
 

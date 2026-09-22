@@ -102,7 +102,7 @@ const SNAPSHOT = `(() => {
       form: row.dataset.prlanesForm,
       pinned: row.dataset.prlanesPin === '1',
       visible: getComputedStyle(row).display !== 'none',
-      stripped: row.dataset.prlanesStrip === '1'
+      fold: row.dataset.prlanesFold || null
     };
     const strip = row.querySelector(':scope > .prlanes-strip');
     if (!strip) continue;
@@ -114,6 +114,9 @@ const SNAPSHOT = `(() => {
       preview: strip.querySelector('.prlanes-strip-preview').textContent,
       face: face.tagName.toLowerCase() === 'img' ? face.getAttribute('src') : 'icon',
       title: strip.getAttribute('title'),
+      hideShown: (() => { const h = row.querySelector('.prlanes-hide'); return Boolean(h) && getComputedStyle(h).display !== 'none'; })(),
+      hideRailed: Boolean(row.querySelector('.prlanes-hide--rail')),
+      more: strip.querySelector('.prlanes-strip-more').textContent,
       bodyHidden: Boolean(body) && getComputedStyle(body).display === 'none'
     };
   }
@@ -216,7 +219,7 @@ if (process.argv.includes('--serve')) {
     assert.equal(quiet.gearIcon, true, 'settings is a gear icon');
     assert.equal(quiet.barText, 'QuietShow botsHide events', 'the bar carries no counts');
 
-    const uncollapsed = (fields) => Object.assign({ stripped: false }, fields);
+    const uncollapsed = (fields) => Object.assign({ fold: null }, fields);
 
     // People's comments are never touched.
     assert.deepEqual(quiet.rows['pr-body'], uncollapsed({ actor: 'human', form: 'comment', pinned: true, visible: true }));
@@ -229,13 +232,28 @@ if (process.argv.includes('--serve')) {
     assert.deepEqual(quiet.rows['reviewer-team'], uncollapsed({ actor: 'human', form: 'reviewer', pinned: false, visible: true }));
 
     // Bot comments shrink to a strip; everything else a bot did goes.
-    assert.deepEqual(quiet.rows['bot-comment'], { actor: 'bot', form: 'comment', pinned: false, visible: true, stripped: true });
-    assert.deepEqual(quiet.rows['avatar-bot'], { actor: 'bot', form: 'comment', pinned: false, visible: true, stripped: true });
-    assert.deepEqual(quiet.rows['bot-review'], { actor: 'bot', form: 'comment', pinned: false, visible: true, stripped: true });
-    assert.deepEqual(quiet.rows['resolved-thread-review'], { actor: 'bot', form: 'comment', pinned: false, visible: true, stripped: true });
-    assert.deepEqual(quiet.rows['ai-review'], { actor: 'bot', form: 'comment', pinned: false, visible: true, stripped: true });
+    assert.deepEqual(quiet.rows['bot-comment'], { actor: 'bot', form: 'comment', pinned: false, visible: true, fold: 'strip' });
+    assert.deepEqual(quiet.rows['avatar-bot'], { actor: 'bot', form: 'comment', pinned: false, visible: true, fold: 'strip' });
+    assert.deepEqual(quiet.rows['bot-review'], { actor: 'bot', form: 'comment', pinned: false, visible: true, fold: 'strip' });
+    assert.deepEqual(quiet.rows['resolved-thread-review'], { actor: 'bot', form: 'comment', pinned: false, visible: true, fold: 'strip' });
+    assert.deepEqual(quiet.rows['ai-review'], { actor: 'bot', form: 'comment', pinned: false, visible: true, fold: 'strip' });
     assert.deepEqual(quiet.rows['bot-event'], uncollapsed({ actor: 'bot', form: 'event', pinned: false, visible: false }));
     assert.deepEqual(quiet.rows['reviewer-bot'], uncollapsed({ actor: 'bot', form: 'reviewer', pinned: false, visible: false }));
+
+    // Suggestions are nobody's review yet, so the bots button has no business with them.
+    assert.equal(quiet.rows['suggested-human'].actor, undefined, 'a suggested reviewer is never classified');
+    assert.equal(quiet.rows['suggested-human'].visible, true);
+    assert.equal(quiet.rows['suggested-bot'].actor, undefined, 'not even a suggested bot');
+    assert.equal(quiet.rows['suggested-bot'].visible, true, 'suggesting a bot is not the same as one reviewing');
+
+    // A review whose threads have not loaded yet is still the review, not a timeline event.
+    assert.deepEqual(quiet.rows['lazy-review'], { actor: 'bot', form: 'comment', pinned: false, visible: true, fold: 'strip' },
+      'a bot review with nothing but collapsed threads still gets a strip to open');
+    assert.equal(quiet.strips['lazy-review'].who, 'greptile-apps');
+
+    // The note GitHub parks on an agent's pull request belongs to the bot it names.
+    assert.deepEqual(quiet.rows['copilot-prompt'], uncollapsed({ actor: 'bot', form: 'chrome', pinned: false, visible: false }),
+      'the "Mention @copilot" note goes with the bots');
 
     // Commits belong to nobody, so hiding bots never takes them.
     assert.deepEqual(quiet.rows['human-commit'], uncollapsed({ actor: 'none', form: 'commit', pinned: false, visible: true }));
@@ -248,7 +266,10 @@ if (process.argv.includes('--serve')) {
         who: 'github-actions',
         preview: 'All checks have passed.',
         face: 'icon',
-        title: 'Show bot comments',
+        title: 'Show this comment',
+        hideShown: false,
+        hideRailed: false,
+        more: '',
         bodyHidden: true
       },
       'a hidden bot comment shrinks to its face, its name and one line of what it said'
@@ -264,18 +285,63 @@ if (process.argv.includes('--serve')) {
     assert.equal(quiet.strips['reviewer-bot'], undefined, 'nor do sidebar reviewers');
     assert.equal(quiet.strips['pr-body'], undefined, 'nor does the pull request description');
 
-    // Clicking a strip is how you follow it: the bots come back.
+    // A strip opens the run it stands for, and nothing else moves.
     await evaluate('document.querySelector(\'[data-row="bot-comment"] > .prlanes-strip\').click()');
-    const loud = await until('a strip click to bring the bots back', (state) => !state.hiding.bots.on);
-    assert.deepEqual(loud.rows['bot-comment'], uncollapsed({ actor: 'bot', form: 'comment', pinned: false, visible: true }));
-    assert.equal(loud.strips['bot-comment'].shown, false, 'and its strip steps aside');
+    const peeked = await until('a strip click to open its own comment', (state) => state.rows['bot-comment'].fold === 'open');
+    assert.equal(peeked.strips['bot-comment'].bodyHidden, false, 'the comment it stands for is there');
+    assert.equal(peeked.strips['bot-comment'].shown, false, 'and the strip that stood in for it is done');
+    assert.equal(peeked.strips['bot-comment'].hideShown, true, 'a Hide takes its place');
+    assert.equal(peeked.strips['bot-comment'].hideRailed, false, 'inline, for a row GitHub gave no avatar');
+    assert.equal(peeked.hiding.bots.on, true, 'the button above it did not move');
+    assert.equal(peeked.rows['avatar-bot'].fold, 'strip', 'and no other bot comment opened');
+
+    await evaluate('document.querySelector(\'[data-row="bot-comment"] .prlanes-hide\').click()');
+    const shut = await until('the Hide to fold it back up', (state) => state.rows['bot-comment'].fold === 'strip');
+    assert.equal(shut.strips['bot-comment'].bodyHidden, true, 'the comment goes away again');
+    assert.equal(shut.strips['bot-comment'].shown, true, 'and the strip comes back');
+    assert.equal(shut.strips['bot-comment'].hideShown, false, 'shut: no Hide');
+
+    // Back-to-back comments from one bot are one strip, and they open together.
+    assert.equal(shut.rows['run-1'].fold, 'strip', 'the first of the run carries the strip');
+    assert.equal(shut.rows['run-2'].fold, 'gone', 'the rest fold into it');
+    assert.equal(shut.rows['run-3'].fold, 'gone');
+    assert.equal(shut.strips['run-1'].more, '+2 more', 'and the strip says how many came with it');
+    assert.equal(shut.strips['run-2'].shown, false, 'a follower shows no strip of its own');
+
+    await evaluate('document.querySelector(\'[data-row="run-1"] > .prlanes-strip\').click()');
+    const run = await until('the run to open together', (state) => state.rows['run-1'].fold === 'open');
+    assert.equal(run.rows['run-2'].fold, 'with', 'every comment in the run comes with it');
+    assert.equal(run.rows['run-3'].fold, 'with');
+    assert.equal(run.rows['run-2'].visible, true, 'run-2 visible');
+    assert.equal(run.rows['run-3'].visible, true, 'run-3 visible');
+    assert.equal(run.strips['run-1'].hideShown, true, 'one Hide folds the whole run');
+    assert.equal(run.strips['run-1'].hideRailed, true, 'sitting in the avatar gutter');
+    assert.equal(run.strips['run-2'].hideShown, false, 'the followers carry none');
+
+    await evaluate('document.querySelector(\'[data-row="run-1"] .prlanes-hide\').click()');
+    await until('the run to fold back together', (state) => state.rows['run-1'].fold === 'strip' && state.rows['run-3'].fold === 'gone');
+
+    // Showing the bots hands every run back to the button, and gives each one a Hide of its own.
+    await clickToggle('bots');
+    const loud = await until('the bots to come back whole', (state) => !state.hiding.bots.on);
+    assert.deepEqual(loud.rows['bot-comment'], { actor: 'bot', form: 'comment', pinned: false, visible: true, fold: 'open' });
+    assert.equal(loud.rows['run-1'].fold, 'open', 'a run stays a run, just an open one');
+    assert.equal(loud.rows['run-2'].fold, 'with');
+    assert.equal(loud.strips['run-1'].hideShown, true, 'with a Hide to fold it on its own');
     assert.equal(loud.rows['bot-event'].visible, true, 'bot timeline events come back with them');
     assert.equal(loud.rows['reviewer-bot'].visible, true, 'so do bot reviewers');
     assert.equal(loud.hiding.bots.label, 'Hide bots', 'and the button now offers to put them away again');
     assert.equal(loud.hiding.events.on, false, 'the other button did not move');
 
+    // A Hide while the bots are shown folds that run alone.
+    await evaluate('document.querySelector(\'[data-row="run-1"] .prlanes-hide\').click()');
+    const lone = await until('one run folded while the rest stay out', (state) => state.rows['run-1'].fold === 'strip');
+    assert.equal(lone.rows['run-3'].fold, 'gone', 'the whole run goes with it');
+    assert.equal(lone.rows['bot-comment'].fold, 'open', 'and nothing else moved');
+    assert.equal(lone.hiding.bots.on, false, 'least of all the button');
+
     await clickToggle('bots');
-    await until('the bots button to go back on', (state) => state.hiding.bots.on);
+    await until('the bots button to go back on', (state) => state.hiding.bots.on && state.rows['bot-comment'].fold === 'strip');
 
     // The events button is independent of the bots one.
     await clickToggle('events');
@@ -283,16 +349,16 @@ if (process.argv.includes('--serve')) {
     assert.equal(still.hiding.events.label, 'Show events');
     assert.equal(still.rows['human-event'].visible, false, 'a person labelling something is still an event');
     assert.equal(still.rows['human-commit'].visible, false, 'and so is a commit');
-    assert.equal(still.rows['bot-commit'].visible, false);
+    assert.equal(still.rows['bot-commit'].visible, false, 'still: bot-commit gone');
     assert.equal(still.rows['pr-body'].visible, true, 'comments are untouched by the events button');
-    assert.equal(still.rows['spoof-comment'].visible, true);
-    assert.equal(still.rows['bot-comment'].stripped, true, 'and the bots button is still doing its own job');
+    assert.equal(still.rows['spoof-comment'].visible, true, 'still: spoof visible');
+    assert.equal(still.rows['bot-comment'].fold, 'strip', 'and the bots button is still doing its own job');
 
     await clickToggle('bots');
     const eventsOnly = await until('the bots to come back while events stay hidden', (state) => !state.hiding.bots.on);
-    assert.equal(eventsOnly.rows['bot-comment'].stripped, false);
+    assert.equal(eventsOnly.rows['bot-comment'].fold, 'open');
     assert.equal(eventsOnly.rows['bot-event'].visible, false, 'a bot event is an event either way');
-    assert.equal(eventsOnly.rows['human-commit'].visible, false);
+    assert.equal(eventsOnly.rows['human-commit'].visible, false, 'eventsOnly: commit gone');
 
     await clickToggle('bots');
     await clickToggle('events');
@@ -332,7 +398,7 @@ if (process.argv.includes('--serve')) {
       timeline.appendChild(row);
     })()`);
     const late = await until('a lazily loaded bot comment to be classified', (state) => state.rows['late-bot'] && state.rows['late-bot'].actor === 'bot');
-    assert.equal(late.rows['late-bot'].stripped, true, 'a bot comment that arrives late gets a strip too');
+    assert.equal(late.rows['late-bot'].fold, 'strip', 'a bot comment that arrives late gets a strip too');
     assert.equal(late.strips['late-bot'].preview, 'Coverage dropped.');
     assert.equal(late.hiding.bots.lit, true, 'the bots button stays lit');
 
@@ -351,6 +417,17 @@ if (process.argv.includes('--serve')) {
     assert.equal(byId.rows['badgeless-commit'].visible, true, 'a bot push is still a commit, not a bot comment');
     await evaluate('document.querySelector(\'[data-row="badgeless-commit"]\').remove()');
 
+    // Collapsing is a choice of its own: without it a hidden bot comment goes altogether.
+    await settings({ collapseBots: false });
+    const gone = await until('bot comments to go outright', (state) => state.rows['bot-comment'].visible === false);
+    assert.equal(gone.strips['bot-comment'], undefined, 'and to leave no strip behind');
+    assert.equal(gone.rows['bot-comment'].fold, null);
+    assert.equal(gone.rows['human-thread'].visible, true, 'people are untouched either way');
+    assert.equal(gone.hiding.bots.lit, true, 'the button still knows there is something to hide');
+    await settings({ collapseBots: true });
+    const back = await until('the strips to come back', (state) => state.rows['bot-comment'].fold === 'strip');
+    assert.equal(back.strips['bot-comment'].preview, 'All checks have passed.');
+
     // Resolved threads are a settings-page choice, not a button.
     await settings({ hideResolvedThreads: true });
     const noResolved = await until('resolved threads to go', (state) => state.rows['resolved-thread'].visible === false);
@@ -362,8 +439,8 @@ if (process.argv.includes('--serve')) {
     await evaluate('delete globalThis.prLanesStorage.local.data.hide');
     await settings({ defaultHideBots: false, defaultHideEvents: true });
     const reopened = await until('the opening positions to change', (state) => !state.hiding.bots.on);
-    assert.equal(reopened.hiding.events.on, true);
-    assert.equal(reopened.rows['bot-comment'].stripped, false);
+    assert.equal(reopened.hiding.events.on, true, 'reopened: events on');
+    assert.equal(reopened.rows['bot-comment'].fold, 'open');
     await evaluate('delete globalThis.prLanesStorage.local.data.hide');
     await settings({ defaultHideBots: true, defaultHideEvents: false });
     await until('the opening positions to change back', (state) => state.hiding.bots.on && !state.hiding.events.on);
@@ -429,7 +506,7 @@ if (process.argv.includes('--serve')) {
     }, 5000, 'a comment that arrives live to be classified');
     assert.equal(liveHuman.rows['late-human'].actor, 'human');
     assert.equal(liveHuman.rows['late-human'].visible, true, 'a comment that arrives live is a person talking, so it shows');
-    assert.equal(liveHuman.rows['late-human'].stripped, false);
+    assert.equal(liveHuman.rows['late-human'].fold, null);
 
     await evaluate(`(() => {
       for (const row of document.querySelectorAll('[data-row]')) {

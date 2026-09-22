@@ -2,13 +2,13 @@
 
 [![Install for Chrome](https://img.shields.io/badge/Chrome-Install-4285F4?logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/hangdlmlkjibcjmnhecohkkplkagnhip) [![Install for Firefox](https://img.shields.io/badge/Firefox-Install-FF7139?logo=firefoxbrowser&logoColor=white)](https://addons.mozilla.org/en-US/firefox/addon/pr-lanes-hide-bots-on-github/)
 
-Bots comment on every pull request, and the two people arguing about the actual change get buried between coverage reports and CI summaries. Quiet PRs puts two buttons on the conversation — **Hide bots** and **Hide events** — and leaves what people wrote alone.
+Bots comment on every pull request, and the two people arguing about the actual change get buried between coverage reports and CI summaries. Quiet PRs puts two buttons on the conversation (**Hide bots** and **Hide events**) and leaves what people wrote alone.
 
 ## What it does
 
 What people say is never hidden. The two buttons turn off everything else, independently of each other, and stay where you leave them. Each one is labelled with what a click will do, so a button reading **Show bots** means the bots are currently gone.
 
-**Hide bots** takes out everything posted by apps, CI and review bots: their comments, the timeline events they generate, and their rows in the **Reviewers** sidebar, so the list shows the people whose review you are actually waiting on. A hidden bot comment does not vanish — it shrinks to a single line carrying the bot's avatar, its name and the opening of what it wrote. Click that line to bring the bots back.
+**Hide bots** takes out everything posted by apps, CI and review bots: their comments, the timeline events they generate, and their rows in the **Reviewers** sidebar, so the list shows the people whose review you are actually waiting on. Suggested reviewers are left alone: nobody is waiting on a review that has not been asked for. A hidden bot comment does not vanish. It shrinks to a single line carrying the bot's avatar, its name and the opening of what it wrote, and back-to-back comments from the same bot share one line between them. Click it to read them; a **Hide** in the avatar gutter folds them away again. That Hide is there whenever a bot comment is showing, so you can fold one bot's run without putting every bot away.
 
 **Hide events** takes out the timeline itself: labels, commits, reviews, merges, whoever caused them.
 
@@ -23,11 +23,12 @@ Both buttons live on the conversation, not in here. These settings decide where 
 | Setting | Default | What it does |
 | --- | --- | --- |
 | Open with **Hide bots** on | on | Where the bots button sits on a conversation you have not touched |
-| Open with **Hide events** on | off | Where the events button sits on a conversation you have not touched |
-| Remember both buttons per repository | off | Keep a separate choice for each repo instead of one setting everywhere |
-| Hide resolved review threads | off | Threads somebody has already resolved drop out, whatever the buttons say |
-| Extra bot accounts | — | Logins that post through a token and look human |
-| Always treat as human | — | Overrides every bot signal |
+| Open with **Hide events** on | off | Where the events button sits on a conversation you have not touched. Events are labels, commits, reviews and merges |
+| Collapse bot comments | on | A hidden bot comment shrinks to one line you can click. Turn this off and it goes altogether |
+| Remember per repository | off | Keep a separate choice for each repo instead of one setting everywhere |
+| Hide resolved PR review threads | off | Threads somebody has already resolved drop out, whatever the buttons say |
+| Extra bot accounts | none | Logins that post through a token and look human |
+| Always treat as human | none | Overrides every bot signal |
 | Name heuristics | on | Treat `*[bot]`, `*-bot`, `*-ci`, `*-app` logins as bots |
 
 ## How a bot is recognised
@@ -44,8 +45,10 @@ Authorship is decided in this order, and the first rule that matches wins:
 - Avatars inside a comment body are ignored, so a commenter cannot post a bot avatar to hide their own comment.
 - Badges are read next to the author only, not anywhere in the row, so an event like "you requested a review from Copilot" survives **Hide bots**: it is your action, not the bot's.
 - A comment box with no author of its own, such as a collapsed "Show resolved" thread, does not vote on who wrote the row it sits in.
+- A review whose threads are still collapsed counts as a comment, not a timeline event, so a bot review is something you can open rather than something that simply goes.
+- The "Mention @copilot in a comment to make changes" note GitHub parks on an agent's pull request has no author, but it goes with the bots.
 
-Accounts that comment through a personal access token — some Codecov and internal release setups — carry no bot signal at all. Add those under *Extra bot accounts*.
+Accounts that comment through a personal access token (some Codecov and internal release setups) carry no bot signal at all. Add those under *Extra bot accounts*.
 
 ## Development
 

@@ -22,6 +22,12 @@
   line-height: 0;
 }
 
+/* The switches carry their whole meaning in the glyph once the labels go, so give it the room. */
+.prlanes-toggle .prlanes-icon svg {
+  width: 19px;
+  height: 19px;
+}
+
 /* Icon-only, so the state needs a mark of its own: strike the glyph out while it is hiding.
    The glyph dims so the bar across it reads as a cut rather than a smudge in the same colour. */
 .prlanes-toggle--on .prlanes-icon svg {
@@ -33,7 +39,7 @@
   position: absolute;
   top: 50%;
   left: -1px;
-  width: 18px;
+  width: 21px;
   height: 2px;
   border-radius: 1px;
   background: currentColor;
@@ -222,19 +228,35 @@
   margin-left: 0;
 }
 
-[data-prlanes-bots="hide"] [data-prlanes-actor="bot"]:not([data-prlanes-pin="1"]):not([data-prlanes-strip="1"]),
+[data-prlanes-bots="hide"] [data-prlanes-actor="bot"]:not([data-prlanes-pin="1"]):not([data-prlanes-fold]),
 [data-prlanes-events="hide"] :is([data-prlanes-form="event"], [data-prlanes-form="commit"]):not([data-prlanes-pin="1"]),
 [data-prlanes-threads="hide"] [data-prlanes-resolved="1"] {
   display: none !important;
 }
 
-/* A comment the lane leaves out shrinks to its strip. */
-[data-prlanes-strip="1"] > :not(.prlanes-strip) {
+/* A run of back-to-back comments from one bot folds into the first one's strip. */
+[data-prlanes-fold="gone"] {
   display: none !important;
 }
 
-[data-prlanes-strip="1"] > .prlanes-strip {
+[data-prlanes-fold="strip"] > :not(.prlanes-strip) {
+  display: none !important;
+}
+
+[data-prlanes-fold="strip"] > .prlanes-strip {
   display: flex;
+}
+
+[data-prlanes-fold="open"] .prlanes-hide {
+  display: inline-flex;
+}
+
+.prlanes-strip {
+  display: none;
+}
+
+[data-prlanes-strip="header"][data-prlanes-open="1"] .prlanes-hide {
+  display: inline-flex;
 }
 
 .prlanes-strip {
@@ -281,6 +303,58 @@
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+.prlanes-strip-hint {
+  flex: 0 0 auto;
+  margin-left: auto;
+  color: var(--fgColor-accent, var(--color-accent-fg, #0969da));
+}
+
+.prlanes-hide {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-start;
+  margin: 0 0 8px;
+  padding: 1px 12px;
+  border: 1px solid var(--borderColor-attention-emphasis, var(--color-attention-emphasis, #bf8700));
+  border-radius: 6px;
+  background: transparent;
+  color: var(--fgColor-attention, var(--color-attention-fg, #bf8700));
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 20px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* In the avatar gutter, the one column every comment has. */
+.prlanes-hide--rail {
+  position: absolute;
+  z-index: 4;
+  width: 40px;
+  margin: 0;
+  padding: 1px 0;
+}
+
+.prlanes-hide:hover {
+  background: var(--bgColor-attention-muted, var(--color-attention-subtle, rgba(191, 135, 0, 0.15)));
+}
+
+/* Open, the comment below says everything the preview was standing in for. */
+.prlanes-strip-more {
+  flex: 0 0 auto;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--bgColor-neutral-muted, var(--color-neutral-muted, rgba(129, 139, 152, 0.2)));
+  color: var(--fgColor-default, var(--color-fg-default, #1f2328));
+  font-weight: 600;
+}
+
+.prlanes-strip-more:empty {
+  display: none;
 }
 
 [data-prlanes-bots="show"] [data-prlanes-actor="bot"] > .TimelineItem,

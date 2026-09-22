@@ -37,6 +37,7 @@
   const STRIP_CLASS = 'prlanes-strip';
   const STRIP_CHILD_SELECTOR = `:scope > .${STRIP_CLASS}`;
   const TOGGLE_CLASS = 'prlanes-toggle';
+  const HIDE_CLASS = 'prlanes-hide';
   const TABLE_TAGS = /^(table|thead|tbody|tfoot|tr)$/i;
   const NOBODY = { human: 'someone', bot: 'a bot' };
 
@@ -67,14 +68,21 @@
   // A bot comment you have hidden still leaves a mark: one line you can click to bring them back.
   function strippable(row) {
     return (
+      settings.collapseBots &&
       row.dataset.prlanesForm === 'comment' &&
       row.dataset.prlanesPin !== '1' &&
       !TABLE_TAGS.test(row.tagName)
     );
   }
 
-  function muted(row) {
-    return hide.bots && row.dataset.prlanesActor === 'bot';
+  function botComment(row) {
+    return strippable(row) && row.dataset.prlanesActor === 'bot';
+  }
+
+  // The button sets the default; a strip or a Hide of your own overrides it for that run alone.
+  function wantsOpen(leader) {
+    const want = leader.dataset.prlanesWant;
+    return want ? want === 'open' : !hide.bots;
   }
 
   function collectTargets() {
@@ -113,47 +121,110 @@
     return make('button', {
       type: 'button',
       class: STRIP_CLASS,
-      title: 'Show bot comments'
+      title: 'Show this comment'
     }, [
       face,
       make('span', { class: 'prlanes-strip-who' }, [kind.login || NOBODY[kind.actor]]),
-      make('span', { class: 'prlanes-strip-preview' }, [lanes.commentPreview(row)])
+      make('span', { class: 'prlanes-strip-preview' }, [lanes.commentPreview(row)]),
+      make('span', { class: 'prlanes-strip-more' }),
+      make('span', { class: 'prlanes-strip-hint' }, ['Show'])
     ]);
+  }
+
+  // Expanded, the way back sits in the avatar gutter, the one column every comment has. A row
+  // GitHub gives no avatar to takes it inline at the top instead.
+  function placeHide(row, control) {
+    const avatar = row.querySelector(AVATAR_RAIL_SELECTOR);
+    const railed = Boolean(avatar) && avatar.parentElement && getComputedStyle(avatar).position === 'absolute';
+
+    if (!railed) {
+      control.classList.remove('prlanes-hide--rail');
+      if (control.getAttribute('style')) control.removeAttribute('style');
+      if (control.parentElement !== row) row.insertBefore(control, row.firstChild);
+      return;
+    }
+
+    if (control.parentElement !== avatar.parentElement) avatar.parentElement.insertBefore(control, avatar.nextSibling);
+    control.classList.add('prlanes-hide--rail');
+
+    const left = getComputedStyle(avatar).left;
+    const top = `${avatar.offsetTop + avatar.offsetHeight + RAIL_GAP}px`;
+    if (control.style.left !== left) control.style.left = left;
+    if (control.style.top !== top) control.style.top = top;
   }
 
   function fillStrip(row, kind) {
     const existing = row.querySelector(STRIP_CHILD_SELECTOR);
     if (existing) existing.remove();
-    if (strippable(row)) row.prepend(buildStrip(row, kind));
+    const hide = row.querySelector(`.${HIDE_CLASS}`);
+    if (hide) hide.remove();
+    if (!strippable(row)) return;
+    row.prepend(buildStrip(row, kind));
+    row.prepend(make('button', { type: 'button', class: HIDE_CLASS, title: 'Hide these comments' }, ['Hide']));
   }
 
-  function markStrip(row) {
-    if (muted(row) && row.querySelector(STRIP_CHILD_SELECTOR)) setData(row, 'prlanesStrip', '1');
-    else delete row.dataset.prlanesStrip;
+  // Back-to-back comments from the same bot are one thing to read, so they are one thing to fold.
+  function foldRuns(rows) {
+    let index = 0;
+
+    while (index < rows.length) {
+      const leader = rows[index];
+      if (!botComment(leader)) {
+        delete leader.dataset.prlanesFold;
+        index += 1;
+        continue;
+      }
+
+      const login = leader.dataset.prlanesLogin || '';
+      let end = index + 1;
+      while (end < rows.length && botComment(rows[end]) && (rows[end].dataset.prlanesLogin || '') === login) end += 1;
+
+      const run = end - index;
+      const open = wantsOpen(leader);
+
+      setData(leader, 'prlanesFold', open ? 'open' : 'strip');
+      setText(leader.querySelector('.prlanes-strip-more'), run > 1 ? `+${run - 1} more` : '');
+      const control = leader.querySelector(`.${HIDE_CLASS}`);
+      if (control) {
+        setAttr(control, 'title', run > 1 ? `Hide these ${run} comments` : 'Hide this comment');
+        if (open) placeHide(leader, control);
+      }
+
+      for (let step = index + 1; step < end; step += 1) {
+        setData(rows[step], 'prlanesFold', open ? 'with' : 'gone');
+        delete rows[step].dataset.prlanesWant;
+      }
+
+      index = end;
+    }
   }
 
   function classifyRows(target) {
     const revision = String(rulesRevision);
     const counts = { bots: 0, events: 0 };
 
-    for (const row of target.rowsOf(target.root)) {
+    const rows = target.rowsOf(target.root);
+
+    for (const row of rows) {
       if (row.dataset.prlanesRev !== revision) {
         const kind = (target.classify || lanes.classifyRow)(row, rules);
         setData(row, 'prlanesActor', kind.actor);
         setData(row, 'prlanesForm', kind.form);
         setData(row, 'prlanesRev', revision);
+        if (kind.login) setData(row, 'prlanesLogin', kind.login);
+        else delete row.dataset.prlanesLogin;
         if (lanes.isPrBody(row)) setData(row, 'prlanesPin', '1');
         else delete row.dataset.prlanesPin;
         fillStrip(row, kind);
       }
-
-      markStrip(row);
 
       const form = row.dataset.prlanesForm;
       if (row.dataset.prlanesPin === '1') continue;
       if (form === 'comment' && row.dataset.prlanesActor === 'bot') counts.bots += 1;
       if (form === 'event' || form === 'commit') counts.events += 1;
     }
+
+    foldRuns(rows);
 
     for (const thread of lanes.resolvableThreads(target.root)) {
       if (lanes.isResolved(thread)) setData(thread, 'prlanesResolved', '1');
@@ -382,26 +453,34 @@
 
   function setHide(name, on) {
     if (SWITCHES.indexOf(name) === -1 || hide[name] === on) return;
+    if (name === 'bots') {
+      for (const row of document.querySelectorAll('[data-prlanes-want]')) delete row.dataset.prlanesWant;
+    }
     hide = Object.assign({}, hide, { [name]: on });
     write(local, { [settings.rememberPerRepo ? stateKey() : 'hide']: hide });
     scan();
   }
+
+  // Strips are built during classification, so changing your mind about them means classifying again.
+  const RECLASSIFY_KEYS = lanes.CLASSIFICATION_KEYS.concat(['collapseBots']);
 
   function invalidateRules() {
     rules = lanes.buildRules(settings);
     rulesRevision += 1;
   }
 
+  // A strip opens the one comment it stands for. The button above it is not involved.
   function onClick(event) {
-    const strip = event.target.closest && event.target.closest(`.${STRIP_CLASS}`);
-    if (!strip) return;
+    const control = event.target.closest && event.target.closest(`.${STRIP_CLASS}, .${HIDE_CLASS}`);
+    if (!control) return;
 
-    const row = strip.closest('[data-prlanes-strip]');
-    if (!row) return;
+    const leader = control.closest('[data-prlanes-fold]');
+    if (!leader) return;
 
     event.preventDefault();
     event.stopPropagation();
-    setHide('bots', false);
+    setData(leader, 'prlanesWant', control.classList.contains(HIDE_CLASS) ? 'shut' : 'open');
+    scan();
   }
 
   function onKeydown(event) {
@@ -459,7 +538,7 @@
 
         read(sync, DEFAULTS).then(async (next) => {
           settings = Object.assign({}, DEFAULTS, next);
-          if (lanes.CLASSIFICATION_KEYS.some((key) => key in changes)) invalidateRules();
+          if (RECLASSIFY_KEYS.some((key) => key in changes)) invalidateRules();
           if ('defaultHideBots' in changes || 'defaultHideEvents' in changes) hide = await loadState();
           scan();
         });
