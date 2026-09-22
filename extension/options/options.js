@@ -44,7 +44,7 @@
     flash('Reset');
   });
 
-  document.getElementById('defaults').textContent = globalThis.PRLanes.DEFAULT_BOT_LOGINS.join(', ');
+  document.getElementById('defaults').textContent = globalThis.PRLanes.botsMissedByHeuristics().join(', ');
 
   read().then((values) => render(Object.assign({}, DEFAULTS, values)));
 })();

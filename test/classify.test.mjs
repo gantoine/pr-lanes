@@ -64,19 +64,19 @@ test('logins normalize across decoration', () => {
   assert.deepEqual(Array.from(lanes.parseLoginList('')), []);
 });
 
-test('an unknown author stays visible in the humans lane', () => {
+test('an unknown author counts as a person, so their comment is never hidden', () => {
   assert.equal(kind({ login: '' }), 'human');
 });
 
 test('the settings schema is exported for both the content script and the options page', () => {
   assert.deepEqual(Object.keys(lanes.DEFAULTS).sort(), [
-    'defaultLane',
+    'defaultHideBots',
+    'defaultHideEvents',
     'extraBots',
     'forceHumans',
     'heuristics',
-    'hideActivityInHumanLane',
     'hideResolvedThreads',
-    'rememberPerPr'
+    'rememberPerRepo'
   ]);
   assert.ok(lanes.CLASSIFICATION_KEYS.every((key) => key in lanes.DEFAULTS));
 });

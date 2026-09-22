@@ -2,9 +2,9 @@
   'use strict';
 
   const DEFAULTS = {
-    defaultLane: 'human',
-    rememberPerPr: false,
-    hideActivityInHumanLane: false,
+    defaultHideBots: true,
+    defaultHideEvents: false,
+    rememberPerRepo: false,
     hideResolvedThreads: false,
     extraBots: '',
     forceHumans: '',
@@ -155,6 +155,12 @@
       .filter(Boolean);
   }
 
+  // The out-of-the-box list is only worth showing where the name rules would not have got there
+  // on their own; the rest is noise on the settings page.
+  function botsMissedByHeuristics() {
+    return DEFAULT_BOT_LOGINS.filter((login) => !HEURISTIC_PATTERNS.some((pattern) => pattern.test(login)));
+  }
+
   function buildRules(settings) {
     const options = settings || {};
     return {
@@ -282,7 +288,7 @@
 
     if (row.querySelector(COMPOSER_SELECTOR)) return { actor: 'none', form: 'chrome' };
 
-    // A push belongs to no lane. Both of them need it to see which comments it answered.
+    // A push belongs to nobody, so hiding bots never takes it: it is how you see what got addressed.
     if (isCommit(row)) return { actor: 'none', form: 'commit' };
 
     const author = readAuthor(row);
@@ -415,6 +421,7 @@
     CLASSIFICATION_KEYS,
     DEFAULTS,
     DEFAULT_BOT_LOGINS,
+    botsMissedByHeuristics,
     buildRules,
     classifyAuthor,
     classifyReviewer,

@@ -1,10 +1,10 @@
 {
   "name": "pr-lanes",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "license": "MIT",
   "type": "module",
-  "description": "Splits GitHub pull request conversations into human and bot lanes.",
+  "description": "Hides bot comments and timeline events on GitHub pull requests.",
   "scripts": {
     "build": "node build.mjs",
     "test": "npm run test:unit && npm run test:e2e",

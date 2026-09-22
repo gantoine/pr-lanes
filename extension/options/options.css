@@ -37,13 +37,8 @@ main {
 }
 
 h1 {
-  margin: 0 0 4px;
-  font-size: 22px;
-}
-
-.lede {
   margin: 0 0 24px;
-  color: var(--fg-muted);
+  font-size: 22px;
 }
 
 section {

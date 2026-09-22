@@ -18,56 +18,84 @@
 
 .prlanes-icon {
   display: none;
+  position: relative;
   line-height: 0;
 }
 
-.prlanes-bar--rail {
-  position: absolute;
-  z-index: 5;
-  flex-direction: column;
-  gap: 6px;
-  width: 40px;
-  margin: 0;
-  padding: 4px;
+/* Icon-only, so the state needs a mark of its own: strike the glyph out while it is hiding.
+   The glyph dims so the bar across it reads as a cut rather than a smudge in the same colour. */
+.prlanes-toggle--on .prlanes-icon svg {
+  opacity: 0.4;
 }
 
-.prlanes-bar--rail .prlanes-brand,
-.prlanes-bar--rail .prlanes-label,
-.prlanes-bar--rail .prlanes-dot {
+.prlanes-toggle--on .prlanes-icon::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: -1px;
+  width: 18px;
+  height: 2px;
+  border-radius: 1px;
+  background: currentColor;
+  transform: translateY(-50%) rotate(-45deg);
+}
+
+/* Two compact placements: the rail beside the avatar, and the sticky header. Same three
+   icon-only squares, one stack turned on its side. */
+.prlanes-bar--compact {
+  gap: 2px;
+}
+
+.prlanes-bar--compact .prlanes-brand,
+.prlanes-bar--compact .prlanes-label,
+.prlanes-bar--compact .prlanes-dot {
   display: none;
 }
 
-.prlanes-bar--rail .prlanes-icon {
+.prlanes-bar--compact .prlanes-icon {
   display: block;
 }
 
-.prlanes-bar--rail .prlanes-tabs {
-  flex-direction: column;
+.prlanes-bar--compact .prlanes-toggles {
   gap: 2px;
   border: 0;
   background: transparent;
   padding: 0;
 }
 
-.prlanes-bar--rail .prlanes-tab {
+.prlanes-bar--compact .prlanes-toggle,
+.prlanes-bar--compact .prlanes-settings {
   justify-content: center;
   width: 30px;
   height: 30px;
+  margin: 0;
   padding: 0;
+  border-radius: 4px;
   color: var(--fgColor-muted, var(--color-fg-muted, #59636e));
 }
 
-.prlanes-bar--rail .prlanes-tab--lit {
+.prlanes-bar--compact .prlanes-toggle--lit {
   color: var(--prlanes-dot-color, inherit);
 }
 
-.prlanes-bar--rail .prlanes-tab--active,
-.prlanes-bar--rail .prlanes-tab--active.prlanes-tab--lit {
-  color: var(--fgColor-onEmphasis, var(--color-fg-on-emphasis, #ffffff));
+.prlanes-bar--compact .prlanes-toggle--on {
+  color: var(--prlanes-dot-color);
+}
+
+.prlanes-bar--rail {
+  position: absolute;
+  z-index: 5;
+  flex-direction: column;
+  width: 40px;
+  margin: 0;
+  padding: 4px;
+}
+
+.prlanes-bar--rail .prlanes-toggles {
+  flex-direction: column;
 }
 
 .prlanes-bar--rail .prlanes-settings {
-  margin: 2px 0 0;
   align-self: center;
 }
 
@@ -80,6 +108,10 @@
   align-self: center;
   flex-wrap: nowrap;
   gap: 8px;
+}
+
+.prlanes-bar--header {
+  gap: 2px;
 }
 
 .prlanes-bar--header {
@@ -103,7 +135,7 @@
   color: var(--fgColor-muted, var(--color-fg-muted, #59636e));
 }
 
-.prlanes-tabs {
+.prlanes-toggles {
   display: flex;
   gap: 2px;
   padding: 2px;
@@ -112,7 +144,7 @@
   background: var(--bgColor-default, var(--color-canvas-default, #ffffff));
 }
 
-.prlanes-tab {
+.prlanes-toggle {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -126,14 +158,14 @@
   cursor: pointer;
 }
 
-.prlanes-tab:not(.prlanes-tab--active):hover {
+.prlanes-toggle:not(.prlanes-toggle--on):hover {
   background: var(--bgColor-neutral-muted, var(--color-neutral-muted, rgba(129, 139, 152, 0.12)));
   color: var(--fgColor-default, var(--color-fg-default, #1f2328));
 }
 
-.prlanes-tab--active {
-  background: var(--bgColor-accent-emphasis, var(--color-accent-emphasis, #0969da));
-  color: var(--fgColor-onEmphasis, var(--color-fg-on-emphasis, #ffffff));
+.prlanes-toggle--on {
+  background: var(--prlanes-tint);
+  color: var(--fgColor-default, var(--color-fg-default, #1f2328));
 }
 
 .prlanes-dot {
@@ -144,16 +176,29 @@
   transition: background-color 120ms ease;
 }
 
-.prlanes-tab--lit .prlanes-dot {
+.prlanes-toggle--lit .prlanes-dot {
   background: var(--prlanes-dot-color);
 }
 
-.prlanes-tab[data-lane="human"] {
-  --prlanes-dot-color: var(--fgColor-success, var(--color-success-fg, #2da44e));
+.prlanes-toggle--on .prlanes-dot {
+  background: var(--prlanes-dot-color);
 }
 
-.prlanes-tab[data-lane="bot"] {
+.prlanes-toggle[data-hide="bots"],
+.prlanes-dot--bots,
+.prlanes-dot--bot {
   --prlanes-dot-color: var(--fgColor-attention, var(--color-attention-fg, #bf8700));
+  --prlanes-tint: var(--bgColor-attention-muted, var(--color-attention-subtle, rgba(191, 135, 0, 0.15)));
+}
+
+.prlanes-toggle[data-hide="events"],
+.prlanes-dot--events {
+  --prlanes-dot-color: var(--fgColor-done, var(--color-done-fg, #8250df));
+  --prlanes-tint: var(--bgColor-done-muted, var(--color-done-subtle, rgba(130, 80, 223, 0.15)));
+}
+
+.prlanes-dot--human {
+  --prlanes-dot-color: var(--fgColor-success, var(--color-success-fg, #2da44e));
 }
 
 .prlanes-settings {
@@ -177,9 +222,8 @@
   margin-left: 0;
 }
 
-[data-prlanes-lane="human"] [data-prlanes-actor="bot"]:not([data-prlanes-pin="1"]):not([data-prlanes-strip="1"]),
-[data-prlanes-lane="bot"] [data-prlanes-actor="human"]:not([data-prlanes-pin="1"]):not([data-prlanes-strip="1"]),
-[data-prlanes-activity="hide"] :is([data-prlanes-form="event"], [data-prlanes-form="commit"]):not([data-prlanes-pin="1"]),
+[data-prlanes-bots="hide"] [data-prlanes-actor="bot"]:not([data-prlanes-pin="1"]):not([data-prlanes-strip="1"]),
+[data-prlanes-events="hide"] :is([data-prlanes-form="event"], [data-prlanes-form="commit"]):not([data-prlanes-pin="1"]),
 [data-prlanes-threads="hide"] [data-prlanes-resolved="1"] {
   display: none !important;
 }
@@ -239,7 +283,7 @@
   text-overflow: ellipsis;
 }
 
-[data-prlanes-lane="all"] [data-prlanes-actor="bot"] > .TimelineItem,
-[data-prlanes-lane="all"] [data-prlanes-actor="bot"].TimelineItem {
+[data-prlanes-bots="show"] [data-prlanes-actor="bot"] > .TimelineItem,
+[data-prlanes-bots="show"] [data-prlanes-actor="bot"].TimelineItem {
   box-shadow: inset 3px 0 0 var(--bgColor-attention-emphasis, var(--color-attention-emphasis, #9a6700));
 }

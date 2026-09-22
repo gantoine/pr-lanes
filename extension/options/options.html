@@ -3,41 +3,38 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>PR Lanes settings</title>
+    <title>Quiet PRs settings</title>
     <link rel="stylesheet" href="options.css" />
   </head>
   <body>
     <main>
-      <h1>PR Lanes for GitHub</h1>
-      <p class="lede">Two lanes on every pull request and issue: one for people, one for bots.</p>
+      <h1>Quiet PRs for GitHub</h1>
 
       <section>
-        <h2>Lanes</h2>
+        <h2>Conversations</h2>
+        <p class="hint">
+          Both buttons stay where you leave them. The first two settings are only where they start.
+        </p>
 
-        <label class="field">
-          <span>Default lane</span>
-          <select id="defaultLane">
-            <option value="human">Humans</option>
-            <option value="bot">Bots</option>
-            <option value="all">All</option>
-          </select>
+        <label class="check">
+          <input type="checkbox" id="defaultHideBots" />
+          <span>Open with <strong>Hide bots</strong> on</span>
         </label>
 
         <label class="check">
-          <input type="checkbox" id="rememberPerPr" />
-          <span>Remember the lane per pull request instead of globally</span>
+          <input type="checkbox" id="defaultHideEvents" />
+          <span>Open with <strong>Hide events</strong> on</span>
+        </label>
+
+        <label class="check">
+          <input type="checkbox" id="rememberPerRepo" />
+          <span>Remember both buttons per repository instead of globally</span>
         </label>
 
         <label class="check">
           <input type="checkbox" id="hideResolvedThreads" />
-          <span>Hide resolved review threads. They stay in the All lane.</span>
+          <span>Hide review threads somebody has already resolved</span>
         </label>
-
-        <label class="check">
-          <input type="checkbox" id="hideActivityInHumanLane" />
-          <span>Hide timeline events (labels, commits, reviews, merges) in the Humans lane</span>
-        </label>
-
       </section>
 
       <section>
@@ -71,6 +68,7 @@
 
       <details>
         <summary>Bots detected out of the box</summary>
+        <p class="hint">On top of anything the name rules above catch:</p>
         <p id="defaults" class="hint"></p>
       </details>
     </main>

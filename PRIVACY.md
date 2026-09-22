@@ -1,6 +1,6 @@
 # Privacy Policy
 
-PR Lanes does not collect, transmit, or sell any user data.
+Quiet PRs does not collect, transmit, or sell any user data.
 
 The extension runs entirely in your browser. It makes no network requests, has no
 background service worker, contains no analytics or tracking, and sends nothing to the
@@ -8,10 +8,10 @@ developer or to anyone else.
 
 ## What it stores
 
-Your settings — the default lane, the hiding options, and any GitHub logins you add to
-the *extra bot accounts* or *always treat as human* lists — are saved using the browser's
-extension storage. With *Remember the lane per pull request* turned on, your lane choice
-for a thread is saved as well.
+Your settings — where the two buttons start, the hiding options, and any GitHub logins you
+add to the *extra bot accounts* or *always treat as human* lists — are saved using the
+browser's extension storage. Where you leave the buttons is saved too, per repository
+when *Remember both buttons per repository* is turned on.
 
 This stays in your browser. Settings may sync between your own devices if you are signed
 in to your browser with extension sync enabled; that transfer is done by the browser, to

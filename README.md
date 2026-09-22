@@ -1,23 +1,31 @@
-# PR Lanes for GitHub
+# Quiet PRs for GitHub
 
 [![Install for Chrome](https://img.shields.io/badge/Chrome-Install-4285F4?logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/hangdlmlkjibcjmnhecohkkplkagnhip) [![Install for Firefox](https://img.shields.io/badge/Firefox-Install-FF7139?logo=firefoxbrowser&logoColor=white)](https://addons.mozilla.org/en-US/firefox/addon/pr-lanes-hide-bots-on-github/)
 
-Bots comment on every pull request, and the two humans arguing about the actual change get buried between coverage reports and CI summaries. PR Lanes splits a GitHub conversation into two lanes you switch between: **Humans** and **Bots**.
+Bots comment on every pull request, and the two people arguing about the actual change get buried between coverage reports and CI summaries. Quiet PRs puts two buttons on the conversation — **Hide bots** and **Hide events** — and leaves what people wrote alone.
 
 ## What it does
 
-**Humans** shows people's comments and reviews, **Bots** everything posted by apps, CI and review bots including the timeline events they generate, and **All** is GitHub's normal view. Press `h` to cycle between them; it is ignored while you are typing in a comment box. A comment the lane leaves out does not vanish, it shrinks to a single line carrying the author's avatar, their name and the opening of what they wrote; click it to cross into the lane it belongs to. The same filter applies to inline review threads on the **Files changed** tab, and in the Humans lane bot reviewers drop out of the **Reviewers** sidebar as well, so the list shows the people whose review you are actually waiting on. Commits sit in every lane, so a push can be read against the bot comment it answers. Nothing useful disappears: the pull request description and the comment box survive every lane, and a thread a bot started but a human replied to stays in Humans, bot comment and all.
+What people say is never hidden. The two buttons turn off everything else, independently of each other, and stay where you leave them. Each one is labelled with what a click will do, so a button reading **Show bots** means the bots are currently gone.
+
+**Hide bots** takes out everything posted by apps, CI and review bots: their comments, the timeline events they generate, and their rows in the **Reviewers** sidebar, so the list shows the people whose review you are actually waiting on. A hidden bot comment does not vanish — it shrinks to a single line carrying the bot's avatar, its name and the opening of what it wrote. Click that line to bring the bots back.
+
+**Hide events** takes out the timeline itself: labels, commits, reviews, merges, whoever caused them.
+
+Press `b` and `e` to work the buttons from the keyboard; both are ignored while you are typing in a comment box. The bot filter also applies to inline review threads on the **Files changed** tab. Commits belong to nobody, so hiding bots never takes them and a push can still be read against the bot comment it answers. Nothing useful disappears: the pull request description and the comment box survive both buttons, and a thread a bot started but a person replied to counts as a person's, bot comment and all.
 
 The extension is entirely local: `storage` for settings and host access to `github.com`, no other permission, no network calls, no background worker.
 
 ## Settings
 
+Both buttons live on the conversation, not in here. These settings decide where they start and what else goes.
+
 | Setting | Default | What it does |
 | --- | --- | --- |
-| Default lane | Humans | Lane a conversation opens in |
-| Hide timeline events (labels, commits, reviews, merges) in the Humans lane | off | Leaves only what people wrote. Bots and All always show them |
-| Hide resolved review threads | off | Threads somebody has already resolved drop out of the Humans and Bots lanes. They stay in All |
-| Remember the lane per pull request | off | Keep a per-PR choice instead of one global lane |
+| Open with **Hide bots** on | on | Where the bots button sits on a conversation you have not touched |
+| Open with **Hide events** on | off | Where the events button sits on a conversation you have not touched |
+| Remember both buttons per repository | off | Keep a separate choice for each repo instead of one setting everywhere |
+| Hide resolved review threads | off | Threads somebody has already resolved drop out, whatever the buttons say |
 | Extra bot accounts | — | Logins that post through a token and look human |
 | Always treat as human | — | Overrides every bot signal |
 | Name heuristics | on | Treat `*[bot]`, `*-bot`, `*-ci`, `*-app` logins as bots |
@@ -34,7 +42,7 @@ Authorship is decided in this order, and the first rule that matches wins:
 6. The name heuristics, when they are on.
 
 - Avatars inside a comment body are ignored, so a commenter cannot post a bot avatar to hide their own comment.
-- Badges are read next to the author only, not anywhere in the row, so an event like "you requested a review from Copilot" stays in the Humans lane: it is your action, not the bot's.
+- Badges are read next to the author only, not anywhere in the row, so an event like "you requested a review from Copilot" survives **Hide bots**: it is your action, not the bot's.
 - A comment box with no author of its own, such as a collapsed "Show resolved" thread, does not vote on who wrote the row it sits in.
 
 Accounts that comment through a personal access token — some Codecov and internal release setups — carry no bot signal at all. Add those under *Extra bot accounts*.

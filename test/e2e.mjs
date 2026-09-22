@@ -125,9 +125,15 @@ const SNAPSHOT = `(() => {
     strips,
     hasBar: true,
     barCount,
-    active: bar.querySelector('.prlanes-tab--active').dataset.lane,
-    humanDotOn: bar.querySelector('[data-lane="human"]').classList.contains('prlanes-tab--lit'),
-    botDotOn: bar.querySelector('[data-lane="bot"]').classList.contains('prlanes-tab--lit'),
+    hiding: Object.fromEntries(Array.from(bar.querySelectorAll('.prlanes-toggle')).map((button) => [
+      button.dataset.hide,
+      {
+        on: button.classList.contains('prlanes-toggle--on'),
+        label: button.querySelector('.prlanes-label').textContent,
+        title: button.getAttribute('title'),
+        lit: button.classList.contains('prlanes-toggle--lit')
+      }
+    ])),
     icons: bar.querySelectorAll('.prlanes-icon svg').length,
     gearIcon: Boolean(bar.querySelector('.prlanes-settings .prlanes-gear')),
     barText: bar.textContent.trim(),
@@ -181,132 +187,142 @@ if (process.argv.includes('--serve')) {
       return result.result.value;
     };
 
-    const clickLane = (name) => evaluate(`document.querySelector('.prlanes-tab[data-lane="${name}"]').click()`);
+    const clickToggle = (name) => evaluate(`document.querySelector('.prlanes-toggle[data-hide="${name}"]').click()`);
+    const settings = (values) => evaluate(`globalThis.prLanesStorage.sync.set(${JSON.stringify(values)})`);
+    const until = (label, ready) =>
+      waitFor(async () => {
+        const state = await evaluate(SNAPSHOT);
+        return ready(state) ? state : null;
+      }, 5000, label);
 
-    await waitFor(() => evaluate('Boolean(document.querySelector(".prlanes-bar"))'), 15000, 'lane bar injection');
+    await waitFor(() => evaluate('Boolean(document.querySelector(".prlanes-bar"))'), 15000, 'bar injection');
 
-    const humans = await evaluate(SNAPSHOT);
-
-    assert.equal(humans.active, 'human', 'default lane is Humans');
-    assert.equal(humans.slot, 'rail', 'lane switcher is a rail under the author avatar at rest');
-    assert.equal(humans.railLeft, '-72px', 'the rail lines up with the avatar gutter');
-    assert.equal(humans.railTop, '52px', 'the rail sits 12px under a 40px avatar');
-    assert.equal(humans.icons, 3, 'each lane carries an icon');
-
-    assert.deepEqual(humans.rows['pr-body'], { actor: 'human', form: 'comment', pinned: true, visible: true, stripped: false });
-    assert.deepEqual(humans.rows['bot-comment'], { actor: 'bot', form: 'comment', pinned: false, visible: true, stripped: true });
-    assert.deepEqual(humans.rows['avatar-bot'], { actor: 'bot', form: 'comment', pinned: false, visible: true, stripped: true });
-    assert.deepEqual(humans.rows['spoof-comment'], { actor: 'human', form: 'comment', pinned: false, visible: true, stripped: false });
-    assert.deepEqual(humans.rows['bot-review'], { actor: 'bot', form: 'comment', pinned: false, visible: true, stripped: true });
-    assert.deepEqual(humans.rows['human-thread'], { actor: 'human', form: 'comment', pinned: false, visible: true, stripped: false });
-    assert.deepEqual(humans.rows['human-event'], { actor: 'human', form: 'event', pinned: false, visible: true, stripped: false });
-    assert.deepEqual(humans.rows['bot-event'], { actor: 'bot', form: 'event', pinned: false, visible: false, stripped: false });
-    assert.deepEqual(humans.rows['human-commit'], { actor: 'none', form: 'commit', pinned: false, visible: true, stripped: false });
-    assert.deepEqual(humans.rows['bot-commit'], { actor: 'none', form: 'commit', pinned: false, visible: true, stripped: false },
-      'a commit a bot pushed still shows in the Humans lane');
-    assert.deepEqual(humans.rows['composer'], { actor: 'none', form: 'chrome', pinned: false, visible: true, stripped: false });
-    assert.deepEqual(humans.rows['resolved-thread-review'], { actor: 'bot', form: 'comment', pinned: false, visible: true, stripped: true });
-    assert.deepEqual(humans.rows['ai-review'], { actor: 'bot', form: 'comment', pinned: false, visible: true, stripped: true });
-    assert.deepEqual(humans.rows['human-event-with-bot'], { actor: 'human', form: 'event', pinned: false, visible: true, stripped: false });
+    const quiet = await evaluate(SNAPSHOT);
 
     assert.deepEqual(
-      humans.strips['bot-comment'],
+      quiet.hiding.bots,
+      { on: true, label: 'Show bots', title: 'Show bots (b)', lit: true },
+      'a conversation opens with bots hidden, so the button offers to show them'
+    );
+    assert.deepEqual(
+      quiet.hiding.events,
+      { on: false, label: 'Hide events', title: 'Hide events (e)', lit: true },
+      'and with timeline events left alone, so that button offers to hide them'
+    );
+    assert.equal(quiet.slot, 'rail', 'the buttons sit in a rail under the author avatar at rest');
+    assert.equal(quiet.railLeft, '-72px', 'the rail lines up with the avatar gutter');
+    assert.equal(quiet.railTop, '52px', 'the rail sits 12px under a 40px avatar');
+    assert.equal(quiet.icons, 2, 'each button carries an icon');
+    assert.equal(quiet.gearIcon, true, 'settings is a gear icon');
+    assert.equal(quiet.barText, 'QuietShow botsHide events', 'the bar carries no counts');
+
+    const uncollapsed = (fields) => Object.assign({ stripped: false }, fields);
+
+    // People's comments are never touched.
+    assert.deepEqual(quiet.rows['pr-body'], uncollapsed({ actor: 'human', form: 'comment', pinned: true, visible: true }));
+    assert.deepEqual(quiet.rows['spoof-comment'], uncollapsed({ actor: 'human', form: 'comment', pinned: false, visible: true }));
+    assert.deepEqual(quiet.rows['human-thread'], uncollapsed({ actor: 'human', form: 'comment', pinned: false, visible: true }));
+    assert.deepEqual(quiet.rows['human-event'], uncollapsed({ actor: 'human', form: 'event', pinned: false, visible: true }));
+    assert.deepEqual(quiet.rows['human-event-with-bot'], uncollapsed({ actor: 'human', form: 'event', pinned: false, visible: true }));
+    assert.deepEqual(quiet.rows['composer'], uncollapsed({ actor: 'none', form: 'chrome', pinned: false, visible: true }));
+    assert.deepEqual(quiet.rows['reviewer-human'], uncollapsed({ actor: 'human', form: 'reviewer', pinned: false, visible: true }));
+    assert.deepEqual(quiet.rows['reviewer-team'], uncollapsed({ actor: 'human', form: 'reviewer', pinned: false, visible: true }));
+
+    // Bot comments shrink to a strip; everything else a bot did goes.
+    assert.deepEqual(quiet.rows['bot-comment'], { actor: 'bot', form: 'comment', pinned: false, visible: true, stripped: true });
+    assert.deepEqual(quiet.rows['avatar-bot'], { actor: 'bot', form: 'comment', pinned: false, visible: true, stripped: true });
+    assert.deepEqual(quiet.rows['bot-review'], { actor: 'bot', form: 'comment', pinned: false, visible: true, stripped: true });
+    assert.deepEqual(quiet.rows['resolved-thread-review'], { actor: 'bot', form: 'comment', pinned: false, visible: true, stripped: true });
+    assert.deepEqual(quiet.rows['ai-review'], { actor: 'bot', form: 'comment', pinned: false, visible: true, stripped: true });
+    assert.deepEqual(quiet.rows['bot-event'], uncollapsed({ actor: 'bot', form: 'event', pinned: false, visible: false }));
+    assert.deepEqual(quiet.rows['reviewer-bot'], uncollapsed({ actor: 'bot', form: 'reviewer', pinned: false, visible: false }));
+
+    // Commits belong to nobody, so hiding bots never takes them.
+    assert.deepEqual(quiet.rows['human-commit'], uncollapsed({ actor: 'none', form: 'commit', pinned: false, visible: true }));
+    assert.deepEqual(quiet.rows['bot-commit'], uncollapsed({ actor: 'none', form: 'commit', pinned: false, visible: true }));
+
+    assert.deepEqual(
+      quiet.strips['bot-comment'],
       {
         shown: true,
         who: 'github-actions',
         preview: 'All checks have passed.',
         face: 'icon',
-        title: 'Show the Bots lane',
+        title: 'Show bot comments',
         bodyHidden: true
       },
-      'a bot comment shrinks to its face, its name and one line of what it said'
+      'a hidden bot comment shrinks to its face, its name and one line of what it said'
     );
     assert.equal(
-      humans.strips['avatar-bot'].face,
+      quiet.strips['avatar-bot'].face,
       'https://avatars.githubusercontent.com/in/15368?v=4',
-      'a bot with an avatar wears it; one without falls back to the lane icon'
+      'a bot with an avatar wears it; one without falls back to the bot glyph'
     );
-    assert.equal(humans.strips['human-thread'].shown, false, 'a comment the lane keeps carries no visible strip');
-    assert.equal(humans.strips['human-thread'].who, 'gantoine', 'and the strip it does carry speaks for the human, not the bot that opened the thread');
-    assert.equal(humans.strips['bot-event'], undefined, 'timeline events have nothing worth previewing');
-    assert.equal(humans.strips['reviewer-bot'], undefined, 'nor do sidebar reviewers');
-    assert.equal(humans.strips['pr-body'], undefined, 'nor does the pull request description');
+    assert.equal(quiet.strips['human-thread'].shown, false, 'a human comment carries no visible strip');
+    assert.equal(quiet.strips['human-thread'].who, 'gantoine', 'and the strip it does carry speaks for the human, not the bot that opened the thread');
+    assert.equal(quiet.strips['bot-event'], undefined, 'timeline events have nothing worth previewing');
+    assert.equal(quiet.strips['reviewer-bot'], undefined, 'nor do sidebar reviewers');
+    assert.equal(quiet.strips['pr-body'], undefined, 'nor does the pull request description');
 
-    assert.equal(humans.humanDotOn, true, 'the human dot lights up when there are human comments');
-    assert.equal(humans.botDotOn, true, 'the bot dot lights up when there are bot comments');
-    assert.equal(humans.gearIcon, true, 'settings is a gear icon');
-    assert.doesNotMatch(humans.barText, /hidden/i, 'the bar carries no hidden-count text');
-    assert.equal(humans.barText, 'LanesHumansBotsAll', 'the bar carries no counts');
-    assert.deepEqual(humans.rows['reviewer-bot'], { actor: 'bot', form: 'reviewer', pinned: false, visible: false, stripped: false });
-    assert.deepEqual(humans.rows['reviewer-human'], { actor: 'human', form: 'reviewer', pinned: false, visible: true, stripped: false });
-    assert.deepEqual(humans.rows['reviewer-team'], { actor: 'human', form: 'reviewer', pinned: false, visible: true, stripped: false });
-
-    await clickLane('bot');
-    const bots = await waitFor(async () => {
-      const state = await evaluate(SNAPSHOT);
-      return state.active === 'bot' ? state : null;
-    }, 5000, 'lane switch to Bots');
-
-    assert.equal(bots.rows['bot-comment'].visible, true, 'bot comment visible in Bots lane');
-    assert.equal(bots.rows['bot-event'].visible, true, 'bot event visible in Bots lane');
-    assert.equal(bots.rows['human-thread'].stripped, true, 'human thread shrinks to a strip in the Bots lane');
-    assert.equal(bots.strips['human-thread'].shown, true);
-    assert.equal(bots.strips['human-thread'].title, 'Show the Humans lane');
-    assert.equal(bots.strips['bot-comment'].shown, false, 'and the bot comment comes back whole');
-    assert.equal(bots.rows['human-event'].visible, false, 'human event hidden in Bots lane');
-    assert.equal(bots.rows['pr-body'].visible, true, 'pull request body stays pinned in Bots lane');
-    assert.equal(bots.rows['composer'].visible, true, 'comment composer is never hidden');
-    assert.equal(bots.rows['reviewer-bot'].visible, true, 'bot reviewers show in the Bots lane');
-    assert.equal(bots.rows['reviewer-human'].visible, false, 'human reviewers hide in the Bots lane');
-    assert.equal(bots.rows['ai-review'].visible, true, 'AI-badged review visible in Bots lane');
-    assert.equal(bots.rows['human-commit'].visible, true, 'commits stay in the Bots lane so a push can be read against the comment it answers');
-    assert.equal(bots.rows['bot-commit'].visible, true);
-    assert.equal(bots.humanDotOn, true, 'a commit does not count as a comment');
-
-    // Clicking a strip is how you follow it: it takes you to the lane the comment lives in.
-    await clickLane('human');
-    await waitFor(async () => ((await evaluate(SNAPSHOT)).active === 'human' ? true : null), 5000, 'the Humans lane');
+    // Clicking a strip is how you follow it: the bots come back.
     await evaluate('document.querySelector(\'[data-row="bot-comment"] > .prlanes-strip\').click()');
-    const followed = await waitFor(async () => {
-      const state = await evaluate(SNAPSHOT);
-      return state.active === 'bot' ? state : null;
-    }, 5000, 'a strip click to cross into the Bots lane');
-    assert.equal(followed.rows['bot-comment'].stripped, false, 'the comment you followed is whole once you get there');
-    assert.equal(followed.strips['bot-comment'].shown, false);
+    const loud = await until('a strip click to bring the bots back', (state) => !state.hiding.bots.on);
+    assert.deepEqual(loud.rows['bot-comment'], uncollapsed({ actor: 'bot', form: 'comment', pinned: false, visible: true }));
+    assert.equal(loud.strips['bot-comment'].shown, false, 'and its strip steps aside');
+    assert.equal(loud.rows['bot-event'].visible, true, 'bot timeline events come back with them');
+    assert.equal(loud.rows['reviewer-bot'].visible, true, 'so do bot reviewers');
+    assert.equal(loud.hiding.bots.label, 'Hide bots', 'and the button now offers to put them away again');
+    assert.equal(loud.hiding.events.on, false, 'the other button did not move');
 
-    await evaluate('document.querySelector(\'[data-row="human-thread"] > .prlanes-strip\').click()');
-    const backAgain = await waitFor(async () => {
-      const state = await evaluate(SNAPSHOT);
-      return state.active === 'human' ? state : null;
-    }, 5000, 'a strip click to cross back into the Humans lane');
-    assert.equal(backAgain.rows['human-thread'].stripped, false);
+    await clickToggle('bots');
+    await until('the bots button to go back on', (state) => state.hiding.bots.on);
 
-    await clickLane('bot');
-    await waitFor(async () => ((await evaluate(SNAPSHOT)).active === 'bot' ? true : null), 5000, 'the Bots lane');
+    // The events button is independent of the bots one.
+    await clickToggle('events');
+    const still = await until('timeline events to go', (state) => state.hiding.events.on);
+    assert.equal(still.hiding.events.label, 'Show events');
+    assert.equal(still.rows['human-event'].visible, false, 'a person labelling something is still an event');
+    assert.equal(still.rows['human-commit'].visible, false, 'and so is a commit');
+    assert.equal(still.rows['bot-commit'].visible, false);
+    assert.equal(still.rows['pr-body'].visible, true, 'comments are untouched by the events button');
+    assert.equal(still.rows['spoof-comment'].visible, true);
+    assert.equal(still.rows['bot-comment'].stripped, true, 'and the bots button is still doing its own job');
 
-    const pressH = () =>
-      evaluate("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'h', bubbles: true }))");
-    const lanesAfter = (expected, label) =>
-      waitFor(async () => {
-        const state = await evaluate(SNAPSHOT);
-        return state.active === expected ? state : null;
-      }, 5000, label);
+    await clickToggle('bots');
+    const eventsOnly = await until('the bots to come back while events stay hidden', (state) => !state.hiding.bots.on);
+    assert.equal(eventsOnly.rows['bot-comment'].stripped, false);
+    assert.equal(eventsOnly.rows['bot-event'].visible, false, 'a bot event is an event either way');
+    assert.equal(eventsOnly.rows['human-commit'].visible, false);
 
-    await pressH();
-    const all = await lanesAfter('all', 'h to move Bots -> All');
+    await clickToggle('bots');
+    await clickToggle('events');
+    await until('back to bots hidden, events shown', (state) => state.hiding.bots.on && !state.hiding.events.on);
+
+    // b and e work the buttons from the keyboard, but not while you are writing.
+    const press = (key) => evaluate(`document.dispatchEvent(new KeyboardEvent('keydown', { key: '${key}', bubbles: true }))`);
+
+    await press('b');
+    await until('b to show the bots', (state) => !state.hiding.bots.on);
+    await press('e');
+    await until('e to hide the events', (state) => state.hiding.events.on);
 
     await evaluate(`(() => {
       const box = document.querySelector('[data-row="composer"] textarea');
       box.focus();
-      box.dispatchEvent(new KeyboardEvent('keydown', { key: 'h', bubbles: true }));
+      box.dispatchEvent(new KeyboardEvent('keydown', { key: 'b', bubbles: true }));
+      box.dispatchEvent(new KeyboardEvent('keydown', { key: 'e', bubbles: true }));
     })()`);
     await new Promise((resolve) => setTimeout(resolve, 400));
     const whileTyping = await evaluate(SNAPSHOT);
-    assert.equal(whileTyping.active, 'all', 'h typed into a comment box does not switch lanes');
+    assert.equal(whileTyping.hiding.bots.on, false, 'b typed into a comment box does not move the button');
+    assert.equal(whileTyping.hiding.events.on, true, 'nor does e');
     await evaluate('document.activeElement.blur()');
 
-    assert.ok(Object.values(all.rows).every((row) => row.visible), 'every row visible in All');
+    await press('b');
+    await press('e');
+    await until('both buttons back to their opening positions', (state) => state.hiding.bots.on && !state.hiding.events.on);
 
+    // A comment that arrives after the page settled is classified and hidden like the rest.
     await evaluate(`(() => {
       const timeline = document.querySelector('.js-discussion rails-partial');
       const row = document.createElement('div');
@@ -315,19 +331,12 @@ if (process.argv.includes('--serve')) {
       row.innerHTML = '<div class="TimelineItem"><div class="timeline-comment"><div class="timeline-comment-header"><a class="author" href="/codecov">codecov</a></div><div class="comment-body">Coverage dropped.</div></div></div>';
       timeline.appendChild(row);
     })()`);
-
-    await pressH();
-    await lanesAfter('human', 'h to wrap All -> Humans');
-    const late = await waitFor(async () => {
-      const state = await evaluate(SNAPSHOT);
-      return state.rows['late-bot'] && state.rows['late-bot'].actor === 'bot' ? state : null;
-    }, 5000, 'lazily loaded bot comment to be classified');
-
-    assert.equal(late.rows['late-bot'].stripped, true, 'lazily loaded bot comment gets a strip in the Humans lane');
+    const late = await until('a lazily loaded bot comment to be classified', (state) => state.rows['late-bot'] && state.rows['late-bot'].actor === 'bot');
+    assert.equal(late.rows['late-bot'].stripped, true, 'a bot comment that arrives late gets a strip too');
     assert.equal(late.strips['late-bot'].preview, 'Coverage dropped.');
-    assert.equal(late.botDotOn, true, 'the bot dot stays lit for a lazily loaded bot comment');
+    assert.equal(late.hiding.bots.lit, true, 'the bots button stays lit');
 
-    // The badge octicon is the first signal; a commit's GraphQL id is the fallback if it ever moves.
+    // The badge octicon is the first signal a row is a commit; its GraphQL id is the fallback.
     await evaluate(`(() => {
       const timeline = document.querySelector('.js-discussion rails-partial');
       const row = document.createElement('div');
@@ -337,77 +346,44 @@ if (process.argv.includes('--serve')) {
       row.innerHTML = '<div class="TimelineItem"><div class="TimelineItem-body"><a class="author" href="/apps/pre-commit-ci">pre-commit-ci</a> pushed a commit</div></div>';
       timeline.appendChild(row);
     })()`);
-    const byId = await waitFor(async () => {
-      const state = await evaluate(SNAPSHOT);
-      return state.rows['badgeless-commit'] && state.rows['badgeless-commit'].form ? state : null;
-    }, 5000, 'a commit row with no badge to be recognised by its commit id');
+    const byId = await until('a commit row with no badge to be known by its commit id', (state) => state.rows['badgeless-commit'] && state.rows['badgeless-commit'].form);
     assert.equal(byId.rows['badgeless-commit'].form, 'commit');
-    assert.equal(byId.rows['badgeless-commit'].visible, true);
+    assert.equal(byId.rows['badgeless-commit'].visible, true, 'a bot push is still a commit, not a bot comment');
     await evaluate('document.querySelector(\'[data-row="badgeless-commit"]\').remove()');
 
-    const settings = async (values) => {
-      await evaluate(`globalThis.prLanesStorage.sync.set(${JSON.stringify(values)})`);
-    };
-
-    await clickLane('bot');
-    await lanesAfter('bot', 'the Bots lane');
+    // Resolved threads are a settings-page choice, not a button.
     await settings({ hideResolvedThreads: true });
-    const noResolved = await waitFor(async () => {
-      const state = await evaluate(SNAPSHOT);
-      return state.rows['resolved-thread'].visible === false ? state : null;
-    }, 5000, 'resolved threads to hide');
+    const noResolved = await until('resolved threads to go', (state) => state.rows['resolved-thread'].visible === false);
     assert.equal(noResolved.rows['resolved-thread-review'].visible, true, 'the review around it stays');
-
-    await clickLane('all');
-    const resolvedInAll = await waitFor(async () => {
-      const state = await evaluate(SNAPSHOT);
-      return state.active === 'all' ? state : null;
-    }, 5000, 'the All lane');
-    assert.equal(resolvedInAll.rows['resolved-thread'].visible, true, 'the All lane keeps resolved threads');
     await settings({ hideResolvedThreads: false });
-    await clickLane('human');
-    await lanesAfter('human', 'back to the Humans lane');
+    await until('resolved threads to come back', (state) => state.rows['resolved-thread'].visible);
 
-    await settings({ hideActivityInHumanLane: true });
-    const noEvents = await waitFor(async () => {
-      const state = await evaluate(SNAPSHOT);
-      return state.rows['human-event'].visible === false ? state : null;
-    }, 5000, 'timeline events to hide in the Humans lane');
-    assert.equal(noEvents.rows['pr-body'].visible, true, 'comments stay when events are hidden');
-    assert.equal(noEvents.rows['human-commit'].visible, false, 'hiding timeline events takes the commits with it');
-    assert.equal(noEvents.rows['bot-commit'].visible, false);
+    // The defaults move a conversation you have not touched yet, and only that one.
+    await evaluate('delete globalThis.prLanesStorage.local.data.hide');
+    await settings({ defaultHideBots: false, defaultHideEvents: true });
+    const reopened = await until('the opening positions to change', (state) => !state.hiding.bots.on);
+    assert.equal(reopened.hiding.events.on, true);
+    assert.equal(reopened.rows['bot-comment'].stripped, false);
+    await evaluate('delete globalThis.prLanesStorage.local.data.hide');
+    await settings({ defaultHideBots: true, defaultHideEvents: false });
+    await until('the opening positions to change back', (state) => state.hiding.bots.on && !state.hiding.events.on);
 
-    await clickLane('bot');
-    const eventsInBots = await waitFor(async () => {
-      const state = await evaluate(SNAPSHOT);
-      return state.active === 'bot' ? state : null;
-    }, 5000, 'the Bots lane');
-    assert.equal(eventsInBots.rows['bot-event'].visible, true, 'bot events still show in the Bots lane');
-    assert.equal(eventsInBots.rows['human-commit'].visible, true, 'and so do the commits');
-    await clickLane('human');
-    await lanesAfter('human', 'back to the Humans lane');
-
-    await settings({ hideActivityInHumanLane: false });
-    await waitFor(async () => (await evaluate(SNAPSHOT)).rows['human-event'].visible, 5000, 'events to come back');
-
-    await settings({ rememberPerPr: true });
-    await clickLane('all');
+    await settings({ rememberPerRepo: true });
+    await clickToggle('events');
     const remembered = await waitFor(
-      () => evaluate('globalThis.prLanesStorage.local.data["lane:PostHog/posthog#30000"] || null'),
+      () => evaluate('globalThis.prLanesStorage.local.data["hide:PostHog/posthog"] || null'),
       5000,
-      'the lane to be remembered against this pull request'
+      'both buttons to be remembered against this repository'
     );
-    assert.equal(remembered, 'all', 'the per-pull-request lane is stored under its own key');
-    await settings({ rememberPerPr: false });
-    await clickLane('human');
-    await waitFor(async () => (await evaluate(SNAPSHOT)).active === 'human', 5000, 'back to the Humans lane');
-
-
+    assert.deepEqual(remembered, { bots: true, events: true }, 'the per-repository choice is stored under its own key');
+    await settings({ rememberPerRepo: false });
+    await clickToggle('events');
+    await until('back to the opening positions', (state) => state.hiding.bots.on && !state.hiding.events.on);
     await evaluate('document.querySelector(\'[data-role="avatar"]\').remove()');
     const tabs = await waitFor(async () => {
       const state = await evaluate(SNAPSHOT);
       return state.slot === 'tabs' ? state : null;
-    }, 5000, 'the switcher to fall back to the tab row without an avatar');
+    }, 5000, 'the bar to fall back to the tab row without an avatar');
     assert.match(tabs.slotParent, /TabNavList/, 'the fallback sits next to the tabs');
 
     await evaluate(`(() => {
@@ -417,8 +393,8 @@ if (process.argv.includes('--serve')) {
     const sticky = await waitFor(async () => {
       const state = await evaluate(SNAPSHOT);
       return state.slot === 'header' ? state : null;
-    }, 5000, 'lane bar to follow the sticky header');
-    assert.match(sticky.slotParent, /TitleArea/, 'lane bar rides the sticky header title row');
+    }, 5000, 'the bar to follow the sticky header');
+    assert.match(sticky.slotParent, /TitleArea/, 'the bar rides the sticky header title row');
 
     await evaluate(`(() => {
       document.querySelector('[data-role="sticky"]').style.display = 'none';
@@ -427,7 +403,7 @@ if (process.argv.includes('--serve')) {
     const unstuck = await waitFor(async () => {
       const state = await evaluate(SNAPSHOT);
       return state.slot === 'tabs' ? state : null;
-    }, 5000, 'lane bar to return to the tab row');
+    }, 5000, 'the bar to return to the tab row');
     assert.match(unstuck.slotParent, /TabNavList/);
     assert.equal(unstuck.railLeft, '', 'rail positioning is cleared when the bar leaves the rail');
 
@@ -435,7 +411,7 @@ if (process.argv.includes('--serve')) {
     const headerless = await waitFor(async () => {
       const state = await evaluate(SNAPSHOT);
       return state.barBeforeTimeline ? state : null;
-    }, 5000, 'lane bar to fall back above the timeline when there is no header');
+    }, 5000, 'the bar to fall back above the timeline when there is no header');
     assert.equal(headerless.slot, 'timeline', 'the bar falls back to its own row above the timeline');
 
     await evaluate(`(() => {
@@ -452,22 +428,21 @@ if (process.argv.includes('--serve')) {
       return state.rows['late-human'] && state.rows['late-human'].actor ? state : null;
     }, 5000, 'a comment that arrives live to be classified');
     assert.equal(liveHuman.rows['late-human'].actor, 'human');
-    assert.equal(liveHuman.rows['late-human'].visible, true, 'a comment that arrives live shows in the Humans lane');
-    assert.equal(liveHuman.humanDotOn, true);
+    assert.equal(liveHuman.rows['late-human'].visible, true, 'a comment that arrives live is a person talking, so it shows');
+    assert.equal(liveHuman.rows['late-human'].stripped, false);
 
     await evaluate(`(() => {
       for (const row of document.querySelectorAll('[data-row]')) {
-        const comment = row.dataset.prlanesActor === 'human' && row.dataset.prlanesForm === 'comment';
-        if (comment && row.dataset.prlanesPin !== '1') row.remove();
+        if (row.dataset.prlanesActor === 'bot' && row.dataset.prlanesForm === 'comment') row.remove();
       }
     })()`);
-    const noHumans = await waitFor(async () => {
+    const noBots = await waitFor(async () => {
       const state = await evaluate(SNAPSHOT);
-      return state.humanDotOn === false ? state : null;
-    }, 5000, 'the human dot to go dark when the last human comment goes away');
-    assert.equal(noHumans.botDotOn, true, 'the bot dot stays lit');
-    assert.equal(noHumans.rows['pr-body'].visible, true, 'the description is still there');
-    assert.equal(noHumans.rows['pr-body'].actor, 'human', 'the description alone does not light the human dot');
+      return state.hiding.bots.lit === false ? state : null;
+    }, 5000, 'the bots button to go dark once there is no bot left to hide');
+    assert.equal(noBots.hiding.bots.on, true, 'the button stays on, it just has nothing to do');
+    assert.equal(noBots.hiding.events.lit, true, 'the events button is still lit');
+    assert.equal(noBots.rows['pr-body'].visible, true, 'the description is still there');
 
     await evaluate(`new Promise((resolve) => {
       const script = document.createElement('script');
@@ -496,7 +471,7 @@ if (process.argv.includes('--serve')) {
     const idle = await evaluate('(() => { window.__stopCounting(); return { count: window.__mutations, log: window.__mutationLog }; })()');
     assert.equal(idle.count, 0, `extension is idle when nothing changes (saw ${idle.count}: ${idle.log.join('; ')})`);
 
-    console.log('e2e: bar injected, rows classified, three lanes filter, sidebar filtered, lazy rows handled, settings applied, idle after settling');
+    console.log('e2e: bar injected, rows classified, both buttons filter, strips shown, sidebar filtered, keyboard works, lazy rows handled, settings applied, idle after settling');
   } catch (error) {
     failure = error;
   } finally {
