@@ -30,4 +30,4 @@ Uninstalling the extension deletes everything it stored.
 
 ## Contact
 
-Questions and bug reports: <https://github.com/gantoine/pr-lanes/issues>
+Questions and bug reports: <https://github.com/gantoine/quiet-prs/issues>
