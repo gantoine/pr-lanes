@@ -8,34 +8,27 @@ const CHROME = process.env.CHROME || '/Applications/Google Chrome.app/Contents/M
 const SIZES = [16, 32, 48, 128];
 
 const BACKGROUND = '#0d1117';
-const HUMAN = '#2da44e';
-const BOT = '#bf8700';
+const GLYPH = '#e6edf3';
+const SLASH = '#d29922';
 
+// The bot the extension strikes through in its own switch, redrawn heavier: whatever the toolbar
+// shows should be the button you are about to press, and it has to survive 16 pixels.
 const icon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="100%" height="100%">
-  <defs>
-    <clipPath id="humanLane"><rect x="14" y="14" width="43" height="100" rx="9" /></clipPath>
-    <clipPath id="botLane"><rect x="71" y="14" width="43" height="100" rx="9" /></clipPath>
-  </defs>
-
   <rect width="128" height="128" rx="26" fill="${BACKGROUND}" />
-  <rect x="14" y="14" width="43" height="100" rx="9" fill="${HUMAN}" />
-  <rect x="71" y="14" width="43" height="100" rx="9" fill="${BOT}" />
 
-  <g clip-path="url(#humanLane)" fill="#ffffff">
-    <circle cx="57" cy="46" r="17" />
-    <path d="M57 69c-17 0-31 11-31 25v14h62V94c0-14-14-25-31-25Z" />
+  <g fill="${GLYPH}">
+    <rect x="59" y="24" width="10" height="16" rx="5" />
+    <rect x="29" y="38" width="70" height="62" rx="21" />
   </g>
 
-  <g clip-path="url(#botLane)">
-    <g fill="#ffffff">
-      <rect x="68" y="22" width="6" height="13" rx="3" />
-      <rect x="43" y="34" width="56" height="50" rx="15" />
-      <rect x="51" y="90" width="40" height="18" rx="7" />
-    </g>
-    <g fill="${BOT}">
-      <circle cx="83" cy="56" r="7" />
-      <rect x="77" y="70" width="16" height="6" rx="3" />
-    </g>
+  <g fill="${BACKGROUND}">
+    <circle cx="50" cy="68" r="8" />
+    <circle cx="78" cy="68" r="8" />
+  </g>
+
+  <g transform="rotate(-45 64 64)">
+    <rect x="2" y="53" width="124" height="22" rx="11" fill="${BACKGROUND}" />
+    <rect x="10" y="57" width="108" height="14" rx="7" fill="${SLASH}" />
   </g>
 </svg>`;
 
