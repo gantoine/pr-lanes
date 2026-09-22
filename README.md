@@ -23,8 +23,8 @@ Both buttons live on the conversation, not in here. These settings decide where 
 | Setting | Default | What it does |
 | --- | --- | --- |
 | Open with **Hide bots** on | on | Where the bots button sits on a conversation you have not touched |
-| Open with **Hide events** on | off | Where the events button sits on a conversation you have not touched. Events are labels, commits, reviews and merges |
 | Collapse bot comments | on | A hidden bot comment shrinks to one line you can click. Turn this off and it goes altogether |
+| Open with **Hide events** on | off | Where the events button sits on a conversation you have not touched. Events are labels, commits, reviews and merges |
 | Remember per repository | off | Keep a separate choice for each repo instead of one setting everywhere |
 | Hide resolved PR review threads | off | Threads somebody has already resolved drop out, whatever the buttons say |
 | Extra bot accounts | none | Logins that post through a token and look human |
