@@ -105,6 +105,15 @@
   align-self: center;
 }
 
+.prlanes-bar--state {
+  position: static;
+  margin: 0 0 0 12px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  align-self: center;
+}
+
 .prlanes-bar--header,
 .prlanes-bar--tabs {
   position: static;

@@ -25,29 +25,35 @@
       </div>
     </div>
 
+    <div class="HeaderMetadata-module__metadataContent__Dg2N7" data-role="state-row">
+      <div><span class="prc-StateLabel-StateLabel-Iawzp" data-testid="header-state">Open</span></div>
+    </div>
+
     <form class="js-issue-sidebar-form" data-role="reviewers">
       <h3 class="discussion-sidebar-heading">Reviewers</h3>
       <span class="css-truncate">
-        <div class="d-flex flex-items-center mb-2">
-          <span class="d-flex min-width-0" data-assignee-name="coderabbitai[bot]" data-row="reviewer-bot">
+        <div class="d-flex flex-items-center mb-2" data-row="reviewer-bot">
+          <span class="d-flex min-width-0" data-assignee-name="coderabbitai[bot]">
             <a href="/apps/coderabbitai"><img class="avatar" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="coderabbitai" /></a>
             <a class="assignee" href="/apps/coderabbitai">coderabbitai[bot]</a>
           </span>
+          <a id="review-status-coderabbitai" class="flex-order-1" data-role="bot-status" href="/PostHog/posthog/pull/1/files/abc"><span class="reviewers-status-icon">&#9744;</span></a>
+          <tool-tip for="review-status-coderabbitai" data-role="bot-tooltip">coderabbitai[bot] left review comments</tool-tip>
         </div>
-        <div class="d-flex flex-items-center mb-2">
-          <span class="d-flex min-width-0" data-assignee-name="gantoine" data-row="reviewer-human">
+        <div class="d-flex flex-items-center mb-2" data-row="reviewer-human">
+          <span class="d-flex min-width-0" data-assignee-name="gantoine">
             <a href="/gantoine" data-hovercard-url="/users/gantoine/hovercard"><img class="avatar" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="gantoine" /></a>
             <a class="assignee" href="/gantoine" data-hovercard-url="/users/gantoine/hovercard">gantoine</a>
           </span>
         </div>
-        <div class="d-flex flex-items-center mb-2">
-          <span class="d-flex min-width-0" data-assignee-name="quiet-reviewer" data-row="reviewer-badged">
+        <div class="d-flex flex-items-center mb-2" data-row="reviewer-badged">
+          <span class="d-flex min-width-0" data-assignee-name="quiet-reviewer">
             <a class="assignee" href="/quiet-reviewer" data-hovercard-url="/users/quiet-reviewer/hovercard">quiet-reviewer</a>
             <span class="Label">bot</span>
           </span>
         </div>
-        <div class="d-flex flex-items-center mb-2">
-          <span class="d-flex min-width-0" data-assignee-name="Team Security" data-row="reviewer-team">
+        <div class="d-flex flex-items-center mb-2" data-row="reviewer-team">
+          <span class="d-flex min-width-0" data-assignee-name="Team Security">
             <a class="assignee" href="/orgs/PostHog/teams/team-security">Team Security</a>
           </span>
         </div>
@@ -107,6 +113,22 @@
                 <a class="author" href="/quiet-reviewer">quiet-reviewer</a>
               </div>
               <div class="comment-body">Deployed to preview.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="js-timeline-item" data-row="via-app">
+          <div class="TimelineItem js-comment-container">
+            <div class="avatar-parent-child TimelineItem-avatar">
+              <a class="d-inline-block" href="/gantoine"><img class="avatar rounded-2 avatar-user" src="https://avatars.githubusercontent.com/u/3247106?s=80" alt="@gantoine" /></a>
+              <a href="/apps/claude"><img class="avatar avatar-child rounded-2" src="https://avatars.githubusercontent.com/in/1236702?s=40" alt="Claude" /></a>
+            </div>
+            <div class="timeline-comment" id="issuecomment-6">
+              <div class="timeline-comment-header">
+                <a class="author" href="/gantoine">gantoine</a>
+                <span class="Label">Member</span>
+              </div>
+              <div class="comment-body">Opened on my account by an app.</div>
             </div>
           </div>
         </div>

@@ -122,13 +122,19 @@ const SNAPSHOT = `(() => {
       bodyHidden: Boolean(body) && getComputedStyle(body).display === 'none'
     };
   }
+  const shown = (role) => {
+    const node = document.querySelector('[data-role="' + role + '"]');
+    return Boolean(node) && Boolean(node.getClientRects().length);
+  };
+  const orphans = { status: shown('bot-status'), tooltip: shown('bot-tooltip') };
   const bar = document.querySelector('.prlanes-bar');
   const barCount = document.querySelectorAll('.prlanes-bar').length;
-  if (!bar) return { rows, strips, logins, hasBar: false, barCount };
+  if (!bar) return { rows, strips, logins, orphans, hasBar: false, barCount };
   return {
     rows,
     strips,
     logins,
+    orphans,
     hasBar: true,
     barCount,
     hiding: Object.fromEntries(Array.from(bar.querySelectorAll('.prlanes-toggle')).map((button) => [
@@ -144,7 +150,7 @@ const SNAPSHOT = `(() => {
     gearIcon: Boolean(bar.querySelector('.prlanes-settings .prlanes-gear')),
     barText: bar.textContent.trim(),
     barBeforeTimeline: bar.nextElementSibling === document.querySelector('.js-discussion'),
-    slot: ['rail', 'tabs', 'header'].find((name) => bar.classList.contains('prlanes-bar--' + name)) || 'timeline',
+    slot: ['rail', 'state', 'tabs', 'header'].find((name) => bar.classList.contains('prlanes-bar--' + name)) || 'timeline',
     railLeft: bar.style.left,
     railTop: bar.style.top,
     slotParent: String(bar.parentElement.className)
@@ -222,11 +228,21 @@ if (process.argv.includes('--serve')) {
     assert.equal(quiet.gearIcon, true, 'settings is a gear icon');
     assert.equal(quiet.barText, 'QuietShow botsHide events', 'the bar carries no counts');
 
+    // Hiding a bot reviewer takes its whole row, not just the name: no orphan status icons.
+    assert.equal(quiet.orphans.status, false, 'the review-status icon goes with the reviewer it belongs to');
+    assert.equal(quiet.orphans.tooltip, false, 'and so does its tooltip');
+
     const uncollapsed = (fields) => Object.assign({ fold: null }, fields);
 
     // People's comments are never touched.
     assert.deepEqual(quiet.rows['pr-body'], uncollapsed({ actor: 'human', form: 'comment', pinned: true, visible: true }));
     assert.deepEqual(quiet.rows['spoof-comment'], uncollapsed({ actor: 'human', form: 'comment', pinned: false, visible: true }));
+
+    // Posted on a person's account, but through an app: GitHub hangs the app's avatar beside theirs.
+    assert.deepEqual(quiet.rows['via-app'], { actor: 'bot', form: 'comment', pinned: false, visible: true, fold: 'strip' },
+      'a comment an app posted for somebody is the app talking');
+    assert.equal(quiet.strips['via-app'].face, 'https://avatars.githubusercontent.com/in/1236702?s=40', 'and the strip wears the app face, not the account one');
+    assert.equal(quiet.logins['via-app'], 'gantoine', 'while still naming the account it went out on');
     assert.deepEqual(quiet.rows['human-thread'], uncollapsed({ actor: 'human', form: 'comment', pinned: false, visible: true }));
     assert.deepEqual(quiet.rows['human-event'], uncollapsed({ actor: 'human', form: 'event', pinned: false, visible: true }));
     assert.deepEqual(quiet.rows['human-event-with-bot'], uncollapsed({ actor: 'human', form: 'event', pinned: false, visible: true }));
@@ -461,11 +477,19 @@ if (process.argv.includes('--serve')) {
     await settings({ rememberPerRepo: false });
     await clickToggle('events');
     await until('back to the opening positions', (state) => state.hiding.bots.on && !state.hiding.events.on);
+    // An issue has no avatar to rail against, so the buttons go to the row the Open badge is in.
     await evaluate('document.querySelector(\'[data-role="avatar"]\').remove()');
+    const beside = await waitFor(async () => {
+      const state = await evaluate(SNAPSHOT);
+      return state.slot === 'state' ? state : null;
+    }, 5000, 'the bar to fall in beside the Open badge without an avatar');
+    assert.match(beside.slotParent, /metadataContent/, 'in the badge row, not the title row');
+
+    await evaluate('document.querySelector(\'[data-role="state-row"]\').remove()');
     const tabs = await waitFor(async () => {
       const state = await evaluate(SNAPSHOT);
       return state.slot === 'tabs' ? state : null;
-    }, 5000, 'the bar to fall back to the tab row without an avatar');
+    }, 5000, 'the bar to fall back to the tab row with no badge either');
     assert.match(tabs.slotParent, /TabNavList/, 'the fallback sits next to the tabs');
 
     await evaluate(`(() => {

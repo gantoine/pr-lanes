@@ -31,8 +31,12 @@
   const HEADER_SELECTOR = '[class*="PullRequestHeader"], [class*="PageHeader-PageHeader"], .gh-header-show';
   const HEADER_SLOT_SELECTOR = '[class*="PageHeader-TitleArea"], .gh-header-title';
   const TAB_NAV_SELECTOR = 'nav[class*="TabNav"], nav.tabnav-tabs, .tabnav-tabs';
+  const STATE_SELECTOR = '[data-testid="header-state"], .gh-header-meta .State';
+  const STATE_ROW_SELECTOR = '[class*="HeaderMetadata-module__metadataContent"], [class*="metadataContent"], .gh-header-meta';
   const AVATAR_RAIL_SELECTOR = '.TimelineItem-avatar, .timeline-comment-avatar';
   const RAIL_GAP = 12;
+
+  const COMPACT_SLOTS = ['rail', 'header', 'state'];
 
   const STRIP_CLASS = 'prlanes-strip';
   const STRIP_CHILD_SELECTOR = `:scope > .${STRIP_CLASS}`;
@@ -348,6 +352,14 @@
     return visible(avatar) ? avatar : null;
   }
 
+  // An issue has no avatar to rail against, and its title row is already crowded. The row the
+  // Open badge sits in is the one place with room, and it is where the eye is anyway.
+  function stateRow() {
+    const badge = document.querySelector(STATE_SELECTOR);
+    if (!visible(badge)) return null;
+    return badge.closest(STATE_ROW_SELECTOR) || badge.parentElement;
+  }
+
   function barSlot() {
     const sticky = document.querySelector(STICKY_HEADER_SELECTOR);
     if (visible(sticky)) return { element: sticky.querySelector(HEADER_SLOT_SELECTOR) || sticky, variant: 'header' };
@@ -355,6 +367,9 @@
     const avatar = authorAvatar();
     const gutter = railOf(avatar);
     if (gutter) return { element: avatar.parentElement, variant: 'rail', gutter };
+
+    const state = stateRow();
+    if (state) return { element: state, variant: 'state' };
 
     const tabs = tabStrip();
     if (tabs) return { element: tabs, variant: 'tabs' };
@@ -386,7 +401,8 @@
     bar.classList.toggle('prlanes-bar--header', variant === 'header');
     bar.classList.toggle('prlanes-bar--tabs', variant === 'tabs');
     bar.classList.toggle('prlanes-bar--rail', variant === 'rail');
-    bar.classList.toggle('prlanes-bar--compact', variant === 'rail' || variant === 'header');
+    bar.classList.toggle('prlanes-bar--state', variant === 'state');
+    bar.classList.toggle('prlanes-bar--compact', COMPACT_SLOTS.indexOf(variant) !== -1);
 
     if (slot) {
       if (bar.parentElement !== slot.element) slot.element.appendChild(bar);

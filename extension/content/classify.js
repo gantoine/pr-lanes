@@ -86,6 +86,8 @@
 
   const AVATAR_SELECTOR = 'img[class*="avatar" i], img[data-component="Avatar"], img[src*="avatars."]';
 
+  const AVATAR_RAIL_SELECTOR = '.TimelineItem-avatar, .timeline-comment-avatar';
+
   const BADGE_SELECTOR = '.Label, span[class*="Label"], [data-testid="bot-badge"]';
 
   const BADGE_TEXT = ['bot', 'ai'];
@@ -197,14 +199,20 @@
     }
   }
 
-  function authoredAvatar(element, header) {
-    const candidates = header ? [header, element] : [element];
+  // Every avatar on the byline, not just the first. A comment posted through an app on somebody's
+  // account carries both: the account's avatar, and the app's beside it as a child.
+  function authoredAvatars(element, header, rail) {
+    // The rail first: a lone comment's avatar lives out there, not in its header, and that is
+    // where GitHub hangs the app's face beside the account's.
+    const candidates = [rail, header, element].filter(Boolean);
     for (const scope of candidates) {
+      const found = [];
       for (const image of scope.querySelectorAll(AVATAR_SELECTOR)) {
-        if (!image.closest(COMMENT_BODY_SELECTOR) && !image.closest(OWN_SELECTOR)) return image;
+        if (!image.closest(COMMENT_BODY_SELECTOR) && !image.closest(OWN_SELECTOR)) found.push(image);
       }
+      if (found.length) return found;
     }
-    return null;
+    return [];
   }
 
   function isAppAvatar(image) {
@@ -222,18 +230,18 @@
 
   // Every bot signal in one place, so the timeline and the reviewers sidebar cannot disagree
   // about the same account. `header` is the scope a badge has to sit in; the sidebar has none.
-  function readIdentity(element, link, header) {
+  function readIdentity(element, link, header, rail) {
     const named = loginFromLink(link);
 
-    let avatar;
-    const avatarImage = () => {
-      if (avatar === undefined) avatar = authoredAvatar(element, header);
-      return avatar;
+    let avatars;
+    const avatarImages = () => {
+      if (avatars === undefined) avatars = authoredAvatars(element, header, rail);
+      return avatars;
     };
 
     let raw = named.raw;
     if (!raw) {
-      const image = avatarImage();
+      const [image] = avatarImages();
       raw = image ? (image.getAttribute('alt') || '').trim() : '';
     }
 
@@ -242,11 +250,13 @@
       suffixedBot: /\[bot\]\s*$/i.test(raw),
       appLink: named.app,
       get avatarSrc() {
-        const image = avatarImage();
+        const images = avatarImages();
+        // Show the app's face when there is one: that is the thing worth recognising.
+        const image = images.find(isAppAvatar) || images[0];
         return image ? image.getAttribute('src') || '' : '';
       },
       get appAvatar() {
-        return isAppAvatar(avatarImage());
+        return avatarImages().some(isAppAvatar);
       },
       get botBadge() {
         const scope = header || (link && link.parentElement) || element;
@@ -258,15 +268,17 @@
     };
   }
 
-  function readAuthor(element) {
+  function readAuthor(element, rail) {
     const header = element.querySelector(HEADER_SELECTOR);
     const link = (header && header.querySelector(AUTHOR_SELECTOR)) || element.querySelector(AUTHOR_SELECTOR);
-    return readIdentity(element, link, header);
+    return readIdentity(element, link, header, rail);
   }
 
   function commentNodes(row) {
-    const found = row.querySelectorAll(COMMENT_SELECTOR);
-    if (found.length) return Array.from(found);
+    // GitHub nests these: a .js-comment-container wrapping the .timeline-comment it holds. Keep the
+    // outer one only, or a single comment reads as several and gets its author read twice.
+    const found = Array.from(row.querySelectorAll(COMMENT_SELECTOR));
+    if (found.length) return outermost(found, row);
     if (row.matches && row.matches(COMMENT_SELECTOR)) return [row];
     return [];
   }
@@ -298,10 +310,14 @@
 
   function classifyRow(row, rules) {
     if (carriesComment(row)) {
-      let written = commentNodes(row)
-        .map((node) => ({ node, author: readAuthor(node) }))
+      const nodes = commentNodes(row);
+      // Only a lone comment owns the row's rail; in a thread each reply carries its own avatar.
+      const rail = nodes.length === 1 ? row.querySelector(AVATAR_RAIL_SELECTOR) : null;
+
+      let written = nodes
+        .map((node) => ({ node, author: readAuthor(node, rail) }))
         .filter((entry) => entry.author.login);
-      if (!written.length) written = [{ node: row, author: readAuthor(row) }];
+      if (!written.length) written = [{ node: row, author: readAuthor(row, rail) }];
 
       const kinds = written.map((entry) => classifyAuthor(entry.author, rules));
       const actor = kinds.includes('human') ? 'human' : 'bot';
@@ -356,27 +372,29 @@
     return new Set(links.map((link) => (link.getAttribute('href') || '').split('?')[0]));
   }
 
+  // A reviewer's name is not the whole row: GitHub hangs a review-status icon, a tooltip and
+  // sometimes a Request control beside it. Climb until taking one more step would swallow
+  // somebody else, so hiding the row takes the lot and leaves no orphans behind.
+  function widenToRow(node, root) {
+    let row = node;
+    let owned = reviewerIdentities(row).size;
+
+    while (row.parentElement && row.parentElement !== root) {
+      const parentOwned = reviewerIdentities(row.parentElement).size;
+      if (parentOwned !== owned) break;
+      row = row.parentElement;
+      owned = parentOwned;
+    }
+
+    return row;
+  }
+
   function reviewerRows(root) {
     // GitHub marks the reviewers actually on the pull request. Suggestions share the same form and
     // are nobody's review yet, so they are not ours to take away.
     const assigned = Array.from(root.querySelectorAll(ASSIGNED_SELECTOR));
-    if (assigned.length) return outermost(assigned, root);
-
-    const rows = new Set();
-
-    for (const link of root.querySelectorAll(REVIEWER_LINK_SELECTOR)) {
-      let row = link;
-      let owned = reviewerIdentities(row).size;
-
-      while (row.parentElement && row.parentElement !== root) {
-        const parentOwned = reviewerIdentities(row.parentElement).size;
-        if (parentOwned !== owned) break;
-        row = row.parentElement;
-        owned = parentOwned;
-      }
-
-      rows.add(row);
-    }
+    const seeds = assigned.length ? assigned : Array.from(root.querySelectorAll(REVIEWER_LINK_SELECTOR));
+    const rows = new Set(seeds.map((seed) => widenToRow(seed, root)));
 
     return outermost(Array.from(rows), root);
   }
