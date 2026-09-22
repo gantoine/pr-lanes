@@ -177,11 +177,66 @@
   margin-left: 0;
 }
 
-[data-prlanes-lane="human"] [data-prlanes-actor="bot"]:not([data-prlanes-pin="1"]),
-[data-prlanes-lane="bot"] [data-prlanes-actor="human"]:not([data-prlanes-pin="1"]),
-[data-prlanes-activity="hide"] [data-prlanes-form="event"]:not([data-prlanes-pin="1"]),
+[data-prlanes-lane="human"] [data-prlanes-actor="bot"]:not([data-prlanes-pin="1"]):not([data-prlanes-strip="1"]),
+[data-prlanes-lane="bot"] [data-prlanes-actor="human"]:not([data-prlanes-pin="1"]):not([data-prlanes-strip="1"]),
+[data-prlanes-activity="hide"] :is([data-prlanes-form="event"], [data-prlanes-form="commit"]):not([data-prlanes-pin="1"]),
 [data-prlanes-threads="hide"] [data-prlanes-resolved="1"] {
   display: none !important;
+}
+
+/* A comment the lane leaves out shrinks to its strip. */
+[data-prlanes-strip="1"] > :not(.prlanes-strip) {
+  display: none !important;
+}
+
+[data-prlanes-strip="1"] > .prlanes-strip {
+  display: flex;
+}
+
+.prlanes-strip {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin: 0 0 8px;
+  padding: 3px 10px;
+  border: 1px solid var(--borderColor-muted, var(--color-border-muted, #d8dee4));
+  border-radius: 6px;
+  background: var(--bgColor-muted, var(--color-canvas-subtle, #f6f8fa));
+  color: var(--fgColor-muted, var(--color-fg-muted, #59636e));
+  font: inherit;
+  font-size: 12px;
+  line-height: 20px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.prlanes-strip:hover {
+  border-color: var(--borderColor-default, var(--color-border-default, #d1d9e0));
+  background: var(--bgColor-neutral-muted, var(--color-neutral-muted, rgba(129, 139, 152, 0.12)));
+}
+
+.prlanes-strip-face {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  line-height: 0;
+  color: var(--fgColor-muted, var(--color-fg-muted, #59636e));
+}
+
+.prlanes-strip-who {
+  flex: 0 0 auto;
+  font-weight: 600;
+  color: var(--fgColor-default, var(--color-fg-default, #1f2328));
+}
+
+.prlanes-strip-preview {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 [data-prlanes-lane="all"] [data-prlanes-actor="bot"] > .TimelineItem,

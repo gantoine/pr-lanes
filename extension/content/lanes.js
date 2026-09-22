@@ -33,6 +33,12 @@
   const AVATAR_RAIL_SELECTOR = '.TimelineItem-avatar, .timeline-comment-avatar';
   const RAIL_GAP = 12;
 
+  const STRIP_CLASS = 'prlanes-strip';
+  const STRIP_CHILD_SELECTOR = `:scope > .${STRIP_CLASS}`;
+  const TABLE_TAGS = /^(table|thead|tbody|tfoot|tr)$/i;
+  const LANE_LABEL = { human: 'Humans', bot: 'Bots' };
+  const NOBODY = { human: 'someone', bot: 'a bot' };
+
   const read = (area, defaults) => Promise.resolve().then(() => area.get(defaults)).catch(() => defaults);
   const write = (area, values) => Promise.resolve().then(() => area.set(values)).catch(() => {});
 
@@ -55,6 +61,19 @@
 
   function resolvedVisible() {
     return lane === 'all' || !settings.hideResolvedThreads;
+  }
+
+  // A comment the lane leaves out still leaves a mark: one line you can click to go and read it.
+  function strippable(row) {
+    return (
+      row.dataset.prlanesForm === 'comment' &&
+      row.dataset.prlanesPin !== '1' &&
+      !TABLE_TAGS.test(row.tagName)
+    );
+  }
+
+  function offLane(row) {
+    return (lane === 'human' && row.dataset.prlanesActor === 'bot') || (lane === 'bot' && row.dataset.prlanesActor === 'human');
   }
 
   function collectTargets() {
@@ -85,6 +104,33 @@
     if (element.getAttribute(name) !== value) element.setAttribute(name, value);
   }
 
+  function buildStrip(row, kind) {
+    const face = kind.avatar
+      ? make('img', { class: 'prlanes-strip-face', src: kind.avatar, alt: '' })
+      : make('span', { class: 'prlanes-strip-face' }, [icon(kind.actor)]);
+
+    return make('button', {
+      type: 'button',
+      class: STRIP_CLASS,
+      title: `Show the ${LANE_LABEL[kind.actor]} lane`
+    }, [
+      face,
+      make('span', { class: 'prlanes-strip-who' }, [kind.login || NOBODY[kind.actor]]),
+      make('span', { class: 'prlanes-strip-preview' }, [lanes.commentPreview(row)])
+    ]);
+  }
+
+  function fillStrip(row, kind) {
+    const existing = row.querySelector(STRIP_CHILD_SELECTOR);
+    if (existing) existing.remove();
+    if (strippable(row)) row.prepend(buildStrip(row, kind));
+  }
+
+  function markStrip(row) {
+    if (offLane(row) && row.querySelector(STRIP_CHILD_SELECTOR)) setData(row, 'prlanesStrip', '1');
+    else delete row.dataset.prlanesStrip;
+  }
+
   function classifyRows(target) {
     const revision = String(rulesRevision);
     const counts = { human: 0, bot: 0 };
@@ -97,7 +143,10 @@
         setData(row, 'prlanesRev', revision);
         if (lanes.isPrBody(row)) setData(row, 'prlanesPin', '1');
         else delete row.dataset.prlanesPin;
+        fillStrip(row, kind);
       }
+
+      markStrip(row);
 
       const actor = row.dataset.prlanesActor;
       const counted = row.dataset.prlanesForm === 'comment' && row.dataset.prlanesPin !== '1';
@@ -336,6 +385,18 @@
     rulesRevision += 1;
   }
 
+  function onClick(event) {
+    const strip = event.target.closest && event.target.closest(`.${STRIP_CLASS}`);
+    if (!strip) return;
+
+    const row = strip.closest('[data-prlanes-strip]');
+    if (!row) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    setLane(row.dataset.prlanesActor);
+  }
+
   function onKeydown(event) {
     if (event.ctrlKey || event.metaKey || event.altKey) return;
     if (event.key.toLowerCase() !== 'h') return;
@@ -373,6 +434,7 @@
     }
 
     window.addEventListener('scroll', queuePlace, { passive: true });
+    document.addEventListener('click', onClick, true);
     document.addEventListener('keydown', onKeydown, true);
 
     if (api.storage.onChanged) {

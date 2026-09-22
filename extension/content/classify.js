@@ -71,6 +71,10 @@
 
   const COMMENT_BODY_SELECTOR = '.comment-body, .js-comment-body, [data-testid="markdown-body"]';
 
+  const OWN_SELECTOR = '.prlanes-strip';
+
+  const PREVIEW_LIMIT = 140;
+
   const AUTHOR_SELECTOR = [
     '.author',
     '[data-testid="avatar-link"]',
@@ -95,6 +99,12 @@
   ].join(',');
 
   const COMPOSER_SELECTOR = 'textarea, [data-testid="comment-composer"], [data-testid="markdown-editor"]';
+
+  // GitHub types every timeline event by the octicon in its badge, and tags commit rows with a
+  // GraphQL commit id. Either one is enough to know a push when we see it.
+  const TIMELINE_BADGE_SELECTOR = ':scope > .TimelineItem-badge, :scope > [class*="TimelineItem-badge"]';
+  const COMMIT_ICON_SELECTOR = '.octicon-git-commit';
+  const COMMIT_GID = /^C_/;
 
   const PR_BODY_SELECTOR = '[data-testid="issue-body"], [id^="issue-"]';
   const PR_BODY_ID = /^issue-\d+$/;
@@ -180,7 +190,7 @@
     const candidates = header ? [header, element] : [element];
     for (const scope of candidates) {
       for (const image of scope.querySelectorAll(AVATAR_SELECTOR)) {
-        if (!image.closest(COMMENT_BODY_SELECTOR)) return image;
+        if (!image.closest(COMMENT_BODY_SELECTOR) && !image.closest(OWN_SELECTOR)) return image;
       }
     }
     return null;
@@ -235,26 +245,56 @@
     return Boolean(row.querySelector(COMMENT_BODY_SELECTOR));
   }
 
+  function isCommit(row) {
+    const gid = row.getAttribute ? row.getAttribute('data-gid') : '';
+    if (gid && COMMIT_GID.test(gid)) return true;
+
+    const item = row.matches && row.matches('.TimelineItem') ? row : row.querySelector('.TimelineItem');
+    const badge = item && item.querySelector(TIMELINE_BADGE_SELECTOR);
+    return Boolean(badge && badge.querySelector(COMMIT_ICON_SELECTOR));
+  }
+
   function isPrBody(row) {
     const node = (row.matches && row.matches(PR_BODY_SELECTOR) && row) || row.querySelector(PR_BODY_SELECTOR);
     if (!node) return false;
     return node.id ? PR_BODY_ID.test(node.id) : true;
   }
 
+  function avatarSrc(node) {
+    const image = authoredAvatar(node, node.querySelector(HEADER_SELECTOR));
+    return image ? image.getAttribute('src') || '' : '';
+  }
+
   function classifyRow(row, rules) {
     if (hasCommentBody(row)) {
-      const authors = commentNodes(row).map(readAuthor).filter((author) => author.login);
-      if (!authors.length) authors.push(readAuthor(row));
-      const actor = authors.some((author) => classifyAuthor(author, rules) === 'human') ? 'human' : 'bot';
-      return { actor, form: 'comment' };
+      let written = commentNodes(row)
+        .map((node) => ({ node, author: readAuthor(node) }))
+        .filter((entry) => entry.author.login);
+      if (!written.length) written = [{ node: row, author: readAuthor(row) }];
+
+      const kinds = written.map((entry) => classifyAuthor(entry.author, rules));
+      const actor = kinds.includes('human') ? 'human' : 'bot';
+      // The face on a collapsed row has to be the author it speaks for, not whoever posted first.
+      const spoken = written[kinds.indexOf(actor)];
+
+      return { actor, form: 'comment', login: spoken.author.login, avatar: avatarSrc(spoken.node) };
     }
 
     if (row.querySelector(COMPOSER_SELECTOR)) return { actor: 'none', form: 'chrome' };
+
+    // A push belongs to no lane. Both of them need it to see which comments it answered.
+    if (isCommit(row)) return { actor: 'none', form: 'commit' };
 
     const author = readAuthor(row);
     if (!author.login) return { actor: 'none', form: 'chrome' };
 
     return { actor: classifyAuthor(author, rules), form: 'event' };
+  }
+
+  function commentPreview(row) {
+    const body = row.querySelector(COMMENT_BODY_SELECTOR);
+    const text = body ? (body.textContent || '').replace(/\s+/g, ' ').trim() : '';
+    return text.length > PREVIEW_LIMIT ? `${text.slice(0, PREVIEW_LIMIT).trimEnd()}\u2026` : text;
   }
 
   function resolvableThreads(root) {
@@ -379,10 +419,12 @@
     classifyAuthor,
     classifyReviewer,
     classifyRow,
+    commentPreview,
     findFilesRoot,
     findReviewersRoot,
     isResolved,
     findTimelineRoot,
+    isCommit,
     isPrBody,
     normalizeLogin,
     parseLoginList,

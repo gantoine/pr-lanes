@@ -6,7 +6,7 @@ Bots comment on every pull request, and the two humans arguing about the actual 
 
 ## What it does
 
-**Humans** shows people's comments and reviews, **Bots** everything posted by apps, CI and review bots including the timeline events they generate, and **All** is GitHub's normal view. Press `h` to cycle between them; it is ignored while you are typing in a comment box. The same filter applies to inline review threads on the **Files changed** tab, and in the Humans lane bot reviewers drop out of the **Reviewers** sidebar as well, so the list shows the people whose review you are actually waiting on. Nothing useful disappears: the pull request description and the comment box survive every lane, and a thread a bot started but a human replied to stays in Humans, bot comment and all.
+**Humans** shows people's comments and reviews, **Bots** everything posted by apps, CI and review bots including the timeline events they generate, and **All** is GitHub's normal view. Press `h` to cycle between them; it is ignored while you are typing in a comment box. A comment the lane leaves out does not vanish, it shrinks to a single line carrying the author's avatar, their name and the opening of what they wrote; click it to cross into the lane it belongs to. The same filter applies to inline review threads on the **Files changed** tab, and in the Humans lane bot reviewers drop out of the **Reviewers** sidebar as well, so the list shows the people whose review you are actually waiting on. Commits sit in every lane, so a push can be read against the bot comment it answers. Nothing useful disappears: the pull request description and the comment box survive every lane, and a thread a bot started but a human replied to stays in Humans, bot comment and all.
 
 The extension is entirely local: `storage` for settings and host access to `github.com`, no other permission, no network calls, no background worker.
 
@@ -15,7 +15,7 @@ The extension is entirely local: `storage` for settings and host access to `gith
 | Setting | Default | What it does |
 | --- | --- | --- |
 | Default lane | Humans | Lane a conversation opens in |
-| Hide timeline events in the Humans lane | off | Labels, commits, reviews and merges drop out of the Humans lane, leaving only what people wrote. They still show in Bots and All |
+| Hide timeline events (labels, commits, reviews, merges) in the Humans lane | off | Leaves only what people wrote. Bots and All always show them |
 | Hide resolved review threads | off | Threads somebody has already resolved drop out of the Humans and Bots lanes. They stay in All |
 | Remember the lane per pull request | off | Keep a per-PR choice instead of one global lane |
 | Extra bot accounts | — | Logins that post through a token and look human |
